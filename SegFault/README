@@ -1,1 +1,12 @@
-At NERSC, you'll need to "module load tensorflow/1.4.0rc0"
+At NERSC, you'll need to 
+> module load tensorflow/1.4.0rc0
+Elsewhere you will not need to do that. 
+
+Decompress the data:
+> gunzip data/*
+
+Just run:
+> python CosmoNet.py
+And you should see the nice segfault. 
+
+The GDB log is in gdbTrace.log. 
