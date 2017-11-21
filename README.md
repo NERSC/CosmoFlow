@@ -1,6 +1,7 @@
 # CosmoFlow
 
 How to run:
+
 step 0: If at NERSC, load the tensorflow module: module load tensorflow. 
 
 step 1: Change the hyper parameters in hyper_parameters_Cosmo.py (see the notations in the python script)
@@ -15,3 +16,5 @@ output data:
 	best model information: best_validation.meta, best_validation.index, best_validation.data-00000-of-00001 
 	
 Note that the data path is hardcoded into hyper_parameters_Cosmo.py, pointing to a directory of data files (already converted, so no need to re-run the io_cosmo code). 
+
+All parameters you might want to adjust are set in hyper_parameters_Cosmo.py. 
