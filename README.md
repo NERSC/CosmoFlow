@@ -13,3 +13,5 @@ output data:
 	loss_test.txt: the relative error for test data
 	test_batch_X.txt: the file to store the predicted and the ground true ([\Omega_m_true \Sigma_8_true \Omega_m_predicted \Omega_m_true])
 	best model information: best_validation.meta, best_validation.index, best_validation.data-00000-of-00001 
+	
+Note that the data path is hardcoded into hyper_parameters_Cosmo.py, pointing to a directory of data files (already converted, so no need to re-run the io_cosmo code). 
