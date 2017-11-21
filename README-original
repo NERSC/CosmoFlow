@@ -1,3 +1,6 @@
+Original README from https://github.com/siyucosmo/CosmoNet
+---------------------------------------------------------------
+
 Code to use CNN (convolutional neural network) to predict Cosmological Omega_m and Sigma_8.
 
 This code closely follows the paper http://proceedings.mlr.press/v48/ravanbakhshb16.pdf. The code is to reproduce the result in this paper. 
