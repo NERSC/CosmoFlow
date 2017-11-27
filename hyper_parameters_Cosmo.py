@@ -39,7 +39,7 @@ RUNPARAM["batch_per_epoch_val"] = RUNPARAM['num_val']*64/Input['BATCH_SIZE']
 RUNPARAM['iter_test'] = RUNPARAM['num_test']*64/Input_Test['BATCH_SIZE']
 
 Path={
-        "Model_path" : '/result/',                 #Path to save the best model where the validation error is the smallest. And then we use this model for test
+        "Model_path" : './result/',                 #Path to save the best model where the validation error is the smallest. And then we use this model for test
         "train_data" : '/global/cscratch1/sd/djbard/cosmoML/CosmoNet/data/train/',            #path where the  train data is
 	"train_result" : './result/',        #path to store the train result
 	"val_data" : '/global/cscratch1/sd/djbard/cosmoML/CosmoNet/data/train/',              #path where the  validation data is
