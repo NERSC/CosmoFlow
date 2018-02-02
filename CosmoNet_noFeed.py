@@ -3,7 +3,7 @@
 import tensorflow as tf
 import numpy as np
 from io_Cosmo import *
-import hyper_parameters_Cosmo as hp
+import hyper_parameters_Cosmo_KNL as hp
 #import matplotlib
 #matplotlib.use('Agg')
 #import matplotlib.pyplot as plt
@@ -163,8 +163,8 @@ class CosmoNet:
  
         ### taking config from the MKL benchmarks. 
         config.allow_soft_placement = True
-        config.intra_op_parallelism_threads = 2 ## default
-        config.inter_op_parallelism_threads = 66 ## Default
+        config.intra_op_parallelism_threads = 1 
+        config.inter_op_parallelism_threads = 16
 
 
 
@@ -260,11 +260,11 @@ class CosmoNet:
 	    	
 
 if __name__ == "__main__":
-    NbodySimuDataBatch64, NbodySimuLabelBatch64 = readDataSet(filenames = [hp.Path['train_data']+str(i)+'.tfrecord' for i in range(0,400)])
+    NbodySimuDataBatch64, NbodySimuLabelBatch64 = readDataSet(filenames = [hp.Path['train_data']+str(i)+'.tfrecord' for i in range(0,100)])
     NbodySimuDataBatch32, NbodySimuLabelBatch32 = tf.cast(NbodySimuDataBatch64,tf.float32),tf.cast(NbodySimuLabelBatch64,tf.float32)
-    valDataBatch64, valLabelbatch64 = readDataSet(filenames=[hp.Path['val_data']+str(i)+".tfrecord" for i in range(400,450)]);
+    valDataBatch64, valLabelbatch64 = readDataSet(filenames=[hp.Path['val_data']+str(i)+".tfrecord" for i in range(100,110)]);
     valDataBatch32, valLabelbatch32 = tf.cast(valDataBatch64,tf.float32),tf.cast(valLabelbatch64,tf.float32)
-    testDataBatch64, testLabelbatch64 = readTestSet(filenames=[hp.Path['test_data']+str(i)+".tfrecord" for i in range(450,499)]);
+    testDataBatch64, testLabelbatch64 = readTestSet(filenames=[hp.Path['test_data']+str(i)+".tfrecord" for i in range(110,120)]);
     testDataBatch32, testLabelbatch32 = tf.cast(testDataBatch64,tf.float32),tf.cast(testLabelbatch64,tf.float32)
 
 
