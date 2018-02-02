@@ -1,5 +1,5 @@
 Input = {
-        "BATCH_SIZE" : 4,              #mini-batch size for training and validation
+        "BATCH_SIZE" : 2,              #mini-batch size for training and validation
         "NUM_THREADS" : 64,              #number of threads to read data
         "CAPACITY" : 0,
         "MIN_AFTER_DEQUEUE" : 200       #the minimum number in the queue after dequeue (Min_after_dequeue and capacity together determines the shuffling of input data)
@@ -8,7 +8,7 @@ Input = {
 Input["CAPACITY"] = Input["BATCH_SIZE"]*4 + Input["MIN_AFTER_DEQUEUE"]
 
 Input_Test = {
-	"BATCH_SIZE" : 4,              #mini-batch size for test data
+	"BATCH_SIZE" : 2,              #mini-batch size for test data
 	"NUM_THREADS" : 64,              #number of threads to read data
 	"CAPACITY" : 0,
 	"MIN_AFTER_DEQUEUE" : 32
