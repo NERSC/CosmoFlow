@@ -26,9 +26,9 @@ Model = {
 RUNPARAM={
 	"num_epoch": 1,              #each epoch means a fully pass over the data. The program might stop before running num_epoch (see next line).        
         "require_improvement": 50,      #if with require_improvement, there is no improvement in validation error, then stop running. 
-	"num_train":400,                #total number of simulations for training
-	"num_val":50,                   #total number of simulations for validation
-        "num_test":49,                  #total number of simulations for testing
+	"num_train":100,                #total number of simulations for training
+	"num_val":20,                   #total number of simulations for validation
+        "num_test":20,                  #total number of simulations for testing
 	"batch_per_epoch":0,             
 	"batch_per_epoch_val":0,
         "iter_test":0                 
@@ -40,11 +40,14 @@ RUNPARAM['iter_test'] = RUNPARAM['num_test']*64/Input_Test['BATCH_SIZE']
 
 Path={
         "Model_path" : './result/',                 #Path to save the best model where the validation error is the smallest. And then we use this model for test
-        "train_data" : '/global/cscratch1/sd/djbard/cosmoML/CosmoNet/data/train/',            #path where the  train data is
+        #"train_data" : '/global/cscratch1/sd/djbard/cosmoML/CosmoNet/data/train/',            #path where the  train data is
+        "train_data" : '/global/cscratch1/sd/djbard/cosmoML/CosmoFlow/data-mine/train/',            #path where the  train data is
 	"train_result" : './result/',        #path to store the train result
-	"val_data" : '/global/cscratch1/sd/djbard/cosmoML/CosmoNet/data/train/',              #path where the  validation data is
+	#"val_data" : '/global/cscratch1/sd/djbard/cosmoML/CosmoNet/data/train/',              #path where the  validation data is
+        "val_data" : '/global/cscratch1/sd/djbard/cosmoML/CosmoFlow/data-mine/train/', 
 	"val_result" : './result',          #path to store the validation result
-	"test_data" : '/global/cscratch1/sd/djbard/cosmoML/CosmoNet/data/train/',              #path where the  test data is
+	#"test_data" : '/global/cscratch1/sd/djbard/cosmoML/CosmoNet/data/train/',              #path where the  test data is
+        "test_data" : '/global/cscratch1/sd/djbard/cosmoML/CosmoFlow/data-mine/train/', 
 	"test_result" : './result/'           #path to store the test result
 
 }
