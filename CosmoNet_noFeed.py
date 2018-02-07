@@ -10,6 +10,9 @@ import hyper_parameters_Cosmo as hp
 import time
 from numpy import linalg as LA
 
+#import the Cray PE ML Plugin
+import ml_comm as mc
+
 #def weight_variable(shape):
 #        initial = tf.truncated_normal(shape, stddev=0.1)
 #        return tf.Variable(initial)
@@ -148,7 +151,15 @@ class CosmoNet:
         with tf.name_scope('adam_optimizer'):
 	    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 	    with tf.control_dependencies(update_ops):
-	        train_step = tf.train.AdamOptimizer(hp.Model['LEARNING_RATE']).minimize(loss)
+	        #train_step = tf.train.AdamOptimizer(hp.Model['LEARNING_RATE']).minimize(loss)
+
+		#use the CPE ML Plugin to average gradients across processes
+		optimizer      = tf.train.AdamOptimizer(hp.Model['LEARNING_RATE'])
+		grads_and_vars = optimizer.compute_gradients(loss)
+		grads          = mc.gradients([gv[0] for gv in grads_and_vars], 0)
+		gs_and_vs      = [(g,v) for (_,v), g in zip(grads_and_vars, grads)]
+		train_step     = optimizer.apply_gradients(gs_and_vs)
+
 
 	lossL1Train,train_true,train_predict = self.train_loss()    
         return train_step, loss,lossL1Train,train_true,train_predict
@@ -190,13 +201,24 @@ class CosmoNet:
 		data_accuracys = []   
         	sess.run(tf.global_variables_initializer())
 		sess.run(tf.local_variables_initializer())
+
+		#initialize the CPE ML Plugin with one team (single thread for now) and the model size
+		totsize = sum([tf.size( v ) for v in tf.trainable_variables)])
+		mc.init(1, 1, totsize, "tensorflow")
+
+		#use the CPE ML Plugin to broadcast initial model parameter values
+		new_vars = mc.broadcast(tf.trainable_variables(),0)
+		bcast    = tf.group(*[tf.assign(v,new_vars[k]) for k,v in enumerate(tf.trainable_variables())])
+		session.run(bcast)
+		
                 print "done sess"
         	coord = tf.train.Coordinator()
         	threads = tf.train.start_queue_runners(coord=coord)
                 print "now epochs"
 
 		for epoch in range(hp.RUNPARAM['num_epoch']):
-                        print epoch
+			if (mc.get_rank() == 0):
+				print epoch
 			save_path = os.path.join(hp.Path['Model_path'], 'best_validation')
 			total_iterations += 1
 			start_time = time.time()
@@ -219,22 +241,28 @@ class CosmoNet:
         	        if(loss_per_epoch_val/hp.RUNPARAM['batch_per_epoch_val'] < best_validation_accuracy):
 				best_validation_accuracy  = loss_per_epoch_val/hp.RUNPARAM['batch_per_epoch_val'] 
 				last_improvement = total_iterations
-				saver.save(sess=sess, save_path=save_path)
-			
-			print("Epoch {} took {:.3f}s".format(epoch, time.time() - start_time))
-                        print "  training loss: %.3f" %(loss_per_epoch_train/hp.RUNPARAM['batch_per_epoch'])
-                        print "  validation loss: %.3f" %(loss_per_epoch_val/hp.RUNPARAM['batch_per_epoch_val'])
-                        print "  best loss: %.3f"%best_validation_accuracy	
-			np.savetxt(os.path.join(hp.Path['train_result'],'loss_train.txt'),losses_train)
-        	        np.savetxt(os.path.join(hp.Path['val_result'],'loss_val.txt'),losses_val)
-        	        np.savetxt(os.path.join(hp.Path['train_result'],'losses.txt'),losses)
-        	        #np.savetxt(os.path.join(hp.Path['train_result'],'train_pred'+str(epoch)+'.txt'),np.c_[train_true_,train_predict_])
-        	        #np.savetxt(os.path.join(hp.Path['val_result'],'val_pred'+str(epoch)+'.txt'),np.c_[val_true_,val_predict_])
+				if (mc.get_rank() == 0):
+					saver.save(sess=sess, save_path=save_path)
+
+			if (mc.get_rank() == 0):
+				print("Epoch {} took {:.3f}s".format(epoch, time.time() - start_time))
+				print "  training loss: %.3f" %(loss_per_epoch_train/hp.RUNPARAM['batch_per_epoch'])
+				print "  validation loss: %.3f" %(loss_per_epoch_val/hp.RUNPARAM['batch_per_epoch_val'])
+				print "  best loss: %.3f"%best_validation_accuracy	
+				np.savetxt(os.path.join(hp.Path['train_result'],'loss_train.txt'),losses_train)
+				np.savetxt(os.path.join(hp.Path['val_result'],'loss_val.txt'),losses_val)
+				np.savetxt(os.path.join(hp.Path['train_result'],'losses.txt'),losses)
+		                #np.savetxt(os.path.join(hp.Path['train_result'],'train_pred'+str(epoch)+'.txt'),np.c_[train_true_,train_predict_])
+        	                #np.savetxt(os.path.join(hp.Path['val_result'],'val_pred'+str(epoch)+'.txt'),np.c_[val_true_,val_predict_])
 			if(total_iterations - last_improvement > require_improvement):
-				print ("No improvement found in a while, stopping optimization.")
+				if (mc.get_rank() == 0):
+					print ("No improvement found in a while, stopping optimization.")
 				break		                        
 		coord.request_stop();
                 coord.join(threads);
+
+		#cleanup the CPE ML Plugin
+		mc.finalize()
 
 	if(self.is_test):
                 
