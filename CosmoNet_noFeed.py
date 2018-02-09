@@ -174,8 +174,8 @@ class CosmoNet:
  
         ### taking config from the MKL benchmarks. 
         config.allow_soft_placement = True
-        config.intra_op_parallelism_threads = 2 ## default
-        config.inter_op_parallelism_threads = 66 ## Default
+        config.intra_op_parallelism_threads = 1 ## default
+        config.inter_op_parallelism_threads = 2 ## Default
 
 
 
@@ -193,7 +193,7 @@ class CosmoNet:
 	if(self.is_train):
             print "training"
             #with tf.Session(config=tf.ConfigProto(inter_op_parallelism_threads=int(os.environ['NUM_INTER_THREADS']),intra_op_parallelism_threads=int(os.environ['NUM_INTRA_THREADS']))) as sess:
-            with tf.Session() as sess:
+            with tf.Session(config=config) as sess:
         	losses_train = []  
         	losses_val = []
         	losses = []
@@ -203,19 +203,23 @@ class CosmoNet:
 		sess.run(tf.local_variables_initializer())
 
 		#initialize the CPE ML Plugin with one team (single thread for now) and the model size
-		totsize = sum([tf.size( v ) for v in tf.trainable_variables)])
+		totsize = sum([reduce(lambda x, y: x*y, v.get_shape().as_list()) for v in tf.trainable_variables()])
+                print("Number of Parameters = " + str(totsize))
+                totsteps = hp.RUNPARAM['num_epoch'] * hp.RUNPARAM['batch_per_epoch']
 		mc.init(1, 1, totsize, "tensorflow")
+                mc.config_team(0, 0, 10, totsteps, 2, 50)
 
 		#use the CPE ML Plugin to broadcast initial model parameter values
 		new_vars = mc.broadcast(tf.trainable_variables(),0)
 		bcast    = tf.group(*[tf.assign(v,new_vars[k]) for k,v in enumerate(tf.trainable_variables())])
-		session.run(bcast)
+		sess.run(bcast)
 		
                 print "done sess"
         	coord = tf.train.Coordinator()
         	threads = tf.train.start_queue_runners(coord=coord)
                 print "now epochs"
 
+                elapsed_time = 0.
 		for epoch in range(hp.RUNPARAM['num_epoch']):
 			if (mc.get_rank() == 0):
 				print epoch
@@ -225,7 +229,13 @@ class CosmoNet:
         	        loss_per_epoch_val = 0
         	        loss_per_epoch_train = 0
         	        for i in range(hp.RUNPARAM['batch_per_epoch']): 
+                                step_start_time = time.time()
 				_,lossTrain,lossL1Train_,train_true_,train_predict_ = sess.run([train_step,loss,lossL1Train,train_true,train_predict])
+                                step_finish_time = time.time()
+                                elapsed_time += (step_finish_time-step_start_time)
+                                samps_per_sec = (epoch * hp.RUNPARAM['batch_per_epoch'] * hp.Input['BATCH_SIZE'] + (i+1) * hp.Input['BATCH_SIZE']) / elapsed_time
+                                if (mc.get_rank() == 0):
+                                  print("Train Step: " + str(i) + ", Samples/Sec = " + str(samps_per_sec) + ", Loss = " + str(lossTrain))
                                
         	                loss_per_epoch_train +=lossL1Train_
         	        losses.append(loss_per_epoch_train/hp.RUNPARAM['batch_per_epoch'])
@@ -233,6 +243,8 @@ class CosmoNet:
 			
                         
 			for i in range(hp.RUNPARAM['batch_per_epoch_val']):
+                                if (mc.get_rank() == 0):
+                                  print("Val Step = " + str(i))
 				loss_,val_true_,val_predict_ = sess.run([lossL1Val,val_true,val_predict])
         	                loss_per_epoch_val += loss_
 			losses_val.append(loss_per_epoch_val/hp.RUNPARAM['batch_per_epoch_val'])

@@ -1,5 +1,5 @@
 Input = {
-        "BATCH_SIZE" : 4,              #mini-batch size for training and validation
+        "BATCH_SIZE" : 1,              #mini-batch size for training and validation
         "NUM_THREADS" : 64,              #number of threads to read data
         "CAPACITY" : 0,
         "MIN_AFTER_DEQUEUE" : 200       #the minimum number in the queue after dequeue (Min_after_dequeue and capacity together determines the shuffling of input data)
@@ -34,8 +34,8 @@ RUNPARAM={
         "iter_test":0                 
 }
 
-RUNPARAM["batch_per_epoch"] = RUNPARAM['num_train']*64/Input['BATCH_SIZE']
-RUNPARAM["batch_per_epoch_val"] = RUNPARAM['num_val']*64/Input['BATCH_SIZE']
+RUNPARAM["batch_per_epoch"] = 100 #RUNPARAM['num_train']*64/Input['BATCH_SIZE']
+RUNPARAM["batch_per_epoch_val"] = 1 #RUNPARAM['num_val']*64/Input['BATCH_SIZE']
 RUNPARAM['iter_test'] = RUNPARAM['num_test']*64/Input_Test['BATCH_SIZE']
 
 Path={
