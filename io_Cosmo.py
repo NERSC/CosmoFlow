@@ -74,7 +74,7 @@ def read_tfrecord(filename_queue):
     NbodySimus /= (tf.reduce_sum(NbodySimus)/64**3+0.)
     NbodySimuAddDim = tf.expand_dims(NbodySimus,axis = 3)
     label = tf.reshape(labelDecode,[2])
-    label = (label - tf.constant([2.995679839999998983e-01,8.610806619999996636e-01],dtype = tf.float64))/tf.constant([2.905168635566176411e-02,4.023372385668218254e-02],dtype = tf.float64)
+    #label = (label - tf.constant([2.995679839999998983e-01,8.610806619999996636e-01],dtype = tf.float64))/tf.constant([2.905168635566176411e-02,4.023372385668218254e-02],dtype = tf.float64) ### z-scoring it. Assuming data is Gaussian, re-scale by (x-mean)/sigma. Looking for mean of 1, sigma of 0. 
     return NbodySimuAddDim,label
     
 def readDataSet(filenames):
@@ -110,7 +110,7 @@ def read_test_tfrecord(filename_queue):
     NbodySimus /= (tf.reduce_sum(NbodySimus)/64**3+0.)
     NbodySimuAddDim = tf.expand_dims(NbodySimus,3)
     label = tf.reshape(labelDecode,[2])
-    labelAddDim = (label - tf.constant([2.995679839999998983e-01,8.610806619999996636e-01],dtype = tf.float64))/tf.constant([2.905168635566176411e-02,4.023372385668218254e-02],dtype = tf.float64)
+    #labelAddDim = (label - tf.constant([2.995679839999998983e-01,8.610806619999996636e-01],dtype = tf.float64))/tf.constant([2.905168635566176411e-02,4.023372385668218254e-02],dtype = tf.float64)
     print NbodySimuAddDim.shape
     '''        
     NbodySimuAddDimList = []
@@ -150,14 +150,14 @@ def readTestSet(filenames):
 
 if __name__ == '__main__':
   ###I've replaced 400 with 100 and 499 with 120
-    order = np.random.permutation(64*100)
-    order = np.split(np.append(order,np.arange(64*100,64*120)),120)
+    order = np.random.permutation(64*400)
+    order = np.split(np.append(order,np.arange(64*400,64*499)),499)
     
     #label_path = os.path.join('/global/cscratch1/sd/djbard/cosmoML/NbodySimu/','basics_infos_1000_1499.txt')
     label_path = os.path.join('/global/cscratch1/sd/djbard/MUSIC_pyCola/egpbos-pycola-672c58551ff1/OmSi','basic_info_mine.txt')
     labels = np.loadtxt(label_path,delimiter=',')    
        
-    for i in range(0,120):
+    for i in range(0,499):
         data = []
         label = []
         for j in order[i]:
