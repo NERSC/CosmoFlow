@@ -233,7 +233,7 @@ class CosmoNet:
 				_,lossTrain,lossL1Train_,train_true_,train_predict_ = sess.run([train_step,loss,lossL1Train,train_true,train_predict])
                                 step_finish_time = time.time()
                                 elapsed_time += (step_finish_time-step_start_time)
-                                samps_per_sec = (epoch * hp.RUNPARAM['batch_per_epoch'] * hp.Input['BATCH_SIZE'] + (i+1) * hp.Input['BATCH_SIZE']) / elapsed_time
+                                samps_per_sec = mc.get_nranks() * (epoch * hp.RUNPARAM['batch_per_epoch'] * hp.Input['BATCH_SIZE'] + (i+1) * hp.Input['BATCH_SIZE']) / elapsed_time
                                 if (mc.get_rank() == 0):
                                   print("Train Step: " + str(i) + ", Samples/Sec = " + str(samps_per_sec) + ", Loss = " + str(lossTrain))
                                
