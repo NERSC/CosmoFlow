@@ -61,8 +61,8 @@ class CosmoNet:
         self.b['b_fc1'] = bias_variable([1024])
 	self.W['W_fc2'] = weight_variable([1024,256],'w8')
         self.b['b_fc2'] = bias_variable([256])
-	self.W['W_fc3'] = weight_variable([256,2],'w9')
-        self.b['b_fc3'] = bias_variable([2])
+	self.W['W_fc3'] = weight_variable([256,2],'w9') ## 3 param here
+        self.b['b_fc3'] = bias_variable([2]) #3 param here
 
     #Define some fuctions that might be used   
     
@@ -163,8 +163,8 @@ class CosmoNet:
  
         ### taking config from the MKL benchmarks. 
         config.allow_soft_placement = True
-        config.intra_op_parallelism_threads = 2 ## default
-        config.inter_op_parallelism_threads = 66 ## Default
+        config.intra_op_parallelism_threads = 2 
+        config.inter_op_parallelism_threads = 32
 
 
 
