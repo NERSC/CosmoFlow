@@ -40,7 +40,7 @@ class loadTfrecordData:
             data_raw = (example.features.feature['data_raw'].bytes_list.value[0])
             data = np.fromstring(data_raw, dtype=np.float).reshape([-1,64,64,64,1])
             label_raw = (example.features.feature['label_raw'].bytes_list.value[0])
-            label = np.fromstring(label_raw,dtype=np.float).reshape([-1,3])
+            label = np.fromstring(label_raw,dtype=np.float).reshape([-1,23)
         return data,label
 
 def read_tfrecord(filename_queue):
@@ -74,9 +74,11 @@ def read_tfrecord(filename_queue):
     NbodySimus /= (tf.reduce_sum(NbodySimus)/64**3+0.)
     NbodySimuAddDim = tf.expand_dims(NbodySimus,axis = 3)
     label = tf.reshape(labelDecode,[3])
-    ###
+
     ### 0.3, 0.02853, 0.8628, 0.04887, 0.701,0.05691
     label = (label - tf.constant([3.0e-01,8.628e-01,7.01e-01],dtype = tf.float64))/tf.constant([2.8353e-02,4.887e-02,5.691e-02],dtype = tf.float64)
+
+    print " read record, ", label.shape
     return NbodySimuAddDim,label
     
 def readDataSet(filenames):
@@ -112,11 +114,11 @@ def read_test_tfrecord(filename_queue):
     NbodySimus /= (tf.reduce_sum(NbodySimus)/64**3+0.)
     NbodySimuAddDim = tf.expand_dims(NbodySimus,3)
     label = tf.reshape(labelDecode,[3])
+
     ### 0.3, 0.02853, 0.8628, 0.04887, 0.701,0.05691
     labelAddDim = (label - tf.constant([3.00e-01,8.628e-01,7.01e-01],dtype = tf.float64))/tf.constant([2.853e-02,4.887e-02,0.05691e-02],dtype = tf.float64)
-    print NbodySimuAddDim.shape
-   
 
+    print NbodySimuAddDim.shape
 
     return NbodySimuAddDim,labelAddDim
     
@@ -137,22 +139,28 @@ def readTestSet(filenames):
         
 
 if __name__ == '__main__':
+  ###I've replaced 400 with 100 and 499 with 120
     order = np.random.permutation(64*400)
     order = np.split(np.append(order,np.arange(64*400,64*499)),499)
     
-    label_path = os.path.join('/global/cscratch1/sd/djbard/MUSIC_pyCola/egpbos-pycola-672c58551ff1/OmSiH/','basic_info_3.txt')
-    labels = np.loadtxt(label_path,delimiter=',')    
-       
-    for i in range(0,499):
+    label_path = os.path.join('/global/cscratch1/sd/djbard/MUSIC_pyCola/egpbos-pycola-672c58551ff1/OmSiH','basic_info_3_reformat.txt')
+    print label_path
+    labels = np.loadtxt(label_path,delimiter=',')
+    print labels.shape
+      
+    for i in range(0,499): ## up to 499
         data = []
         label = []
         for j in order[i]:
+        
             numDirectory = int(j/64)
             numFile = j%64
-            data_path = os.path.join('/global/cscratch1/sd/djbard/cosmoML/NbodySimu/',str('01')+str(numDirectory).rjust(3,'0'),str(numFile)+'.npy')
+            data_path = os.path.join('/global/cscratch1/sd/djbard/MUSIC_pyCola/egpbos-pycola-672c58551ff1/OmSiH',str('01')+str(numDirectory).rjust(3,'0'),str(numFile)+'.npy')
             data = np.append(data,np.load(data_path))
-            label = np.append(label,labels[numDirectory][[1,4]])
-        loadNpyData(data.reshape(-1,64,64,64,1),label.reshape(-1,2),i).convert_to()
-    
 
-  
+            label = np.append(label,labels[numDirectory][[1,2,3]])
+
+        print label.shape
+        #print label
+        print label.reshape(-1,3).shape
+        loadNpyData(data.reshape(-1,64,64,64,1),label.reshape(-1,3),i).convert_to()
