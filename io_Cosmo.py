@@ -40,7 +40,7 @@ class loadTfrecordData:
             data_raw = (example.features.feature['data_raw'].bytes_list.value[0])
             data = np.fromstring(data_raw, dtype=np.float).reshape([-1,64,64,64,1])
             label_raw = (example.features.feature['label_raw'].bytes_list.value[0])
-            label = np.fromstring(label_raw,dtype=np.float).reshape([-1,23)
+            label = np.fromstring(label_raw,dtype=np.float).reshape([-1,3])
         return data,label
 
 def read_tfrecord(filename_queue):
