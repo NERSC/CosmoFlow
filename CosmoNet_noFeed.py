@@ -31,7 +31,7 @@ def lrelu(x, alpha):
 
 
 class CosmoNet:
-    def __init__(self,train_data,train_label, val_data = None, val_label = None, test_data = None, test_label = None, is_train = None, is_test = None):
+    def __init__(self,train_data = None,train_label = None, val_data = None, val_label = None, test_data = None, test_label = None, is_train = None, is_test = None):
         self.train_data = train_data
         self.train_label = train_label
         self.val_data = val_data
@@ -151,7 +151,6 @@ class CosmoNet:
         with tf.name_scope('adam_optimizer'):
 	    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 	    with tf.control_dependencies(update_ops):
-	        #train_step = tf.train.AdamOptimizer(hp.Model['LEARNING_RATE']).minimize(loss)
 
 		#use the CPE ML Plugin to average gradients across processes
 		optimizer      = tf.train.AdamOptimizer(hp.Model['LEARNING_RATE'])
@@ -180,7 +179,6 @@ class CosmoNet:
 
 
         #used to save the model
-        print "saving"
 	saver = tf.train.Saver()
         global best_validation_accuracy
         global last_improvement
@@ -189,49 +187,55 @@ class CosmoNet:
 	last_improvement = 0                   #Iteration-number for last improvement to validation accuracy.
 	require_improvement = hp.RUNPARAM['require_improvement']               #Stop optimization if no improvement found in this many iterations.
         total_iterations = 0                   #Counter for total number of iterations performed so far.        
-	
+
 	if(self.is_train):
-            print "training"
-            #with tf.Session(config=tf.ConfigProto(inter_op_parallelism_threads=int(os.environ['NUM_INTER_THREADS']),intra_op_parallelism_threads=int(os.environ['NUM_INTRA_THREADS']))) as sess:
+
+            #initialize the CPE ML Plugin with one team (single thread for now) and the model size
+            totsize = sum([reduce(lambda x, y: x*y, v.get_shape().as_list()) for v in tf.trainable_variables()])
+            mc.init(1, 1, totsize, "tensorflow")
+            hp.RUNPARAM['batch_per_epoch'] = hp.RUNPARAM['batch_per_epoch'] / mc.get_nranks()
+            totsteps = hp.RUNPARAM['num_epoch'] * hp.RUNPARAM['batch_per_epoch']
+            mc.config_team(0, 0, totsteps, totsteps, 2, 50)
+
+            if (mc.get_rank() == 0):
+                print("+------------------------------+")
+                print("| CosmoFlow                    |")
+                print("| # Ranks = {:5d}              |".format(mc.get_nranks()))
+                print("| Global Batch = {:6d}        |".format(mc.get_nranks() * hp.Input['BATCH_SIZE']))
+		print("| # Parameters = {:9d}     |".format(totsize))
+                print("+------------------------------+") 
+ 
+            #use the CPE ML Plugin to broadcast initial model parameter values
+            new_vars = mc.broadcast(tf.trainable_variables(),0)
+            bcast    = tf.group(*[tf.assign(v,new_vars[k]) for k,v in enumerate(tf.trainable_variables())])
+
             with tf.Session(config=config) as sess:
         	losses_train = []  
         	losses_val = []
         	losses = []
 		val_accuracys = []       
 		data_accuracys = []   
-        	sess.run(tf.global_variables_initializer())
+
+                #do all parameter initializations
+		sess.run(tf.global_variables_initializer())
 		sess.run(tf.local_variables_initializer())
-
-		#initialize the CPE ML Plugin with one team (single thread for now) and the model size
-		totsize = sum([reduce(lambda x, y: x*y, v.get_shape().as_list()) for v in tf.trainable_variables()])
-                print("Number of Parameters = " + str(totsize))
-                totsteps = hp.RUNPARAM['num_epoch'] * hp.RUNPARAM['batch_per_epoch']
-		mc.init(1, 1, totsize, "tensorflow")
-                mc.config_team(0, 0, 10, totsteps, 2, 50)
-
-		#use the CPE ML Plugin to broadcast initial model parameter values
-		new_vars = mc.broadcast(tf.trainable_variables(),0)
-		bcast    = tf.group(*[tf.assign(v,new_vars[k]) for k,v in enumerate(tf.trainable_variables())])
-		sess.run(bcast)
+                sess.run(bcast)
 		
-                print "done sess"
         	coord = tf.train.Coordinator()
         	threads = tf.train.start_queue_runners(coord=coord)
-                print "now epochs"
 
                 elapsed_time = 0.
 		for epoch in range(hp.RUNPARAM['num_epoch']):
-			if (mc.get_rank() == 0):
-				print epoch
 			save_path = os.path.join(hp.Path['Model_path'], 'best_validation')
 			total_iterations += 1
 			start_time = time.time()
         	        loss_per_epoch_val = 0
         	        loss_per_epoch_train = 0
         	        for i in range(hp.RUNPARAM['batch_per_epoch']): 
-                                step_start_time = time.time()
+				step_start_time = time.time()
 				_,lossTrain,lossL1Train_,train_true_,train_predict_ = sess.run([train_step,loss,lossL1Train,train_true,train_predict])
                                 step_finish_time = time.time()
+				
                                 elapsed_time += (step_finish_time-step_start_time)
                                 samps_per_sec = mc.get_nranks() * (epoch * hp.RUNPARAM['batch_per_epoch'] * hp.Input['BATCH_SIZE'] + (i+1) * hp.Input['BATCH_SIZE']) / elapsed_time
                                 if (mc.get_rank() == 0):
@@ -270,15 +274,15 @@ class CosmoNet:
 				if (mc.get_rank() == 0):
 					print ("No improvement found in a while, stopping optimization.")
 				break		                        
+
 		coord.request_stop();
                 coord.join(threads);
 
-		#cleanup the CPE ML Plugin
-		mc.finalize()
+            #cleanup the CPE ML Plugin
+            mc.finalize()
 
 	if(self.is_test):
                 
-                #with tf.Session(config=tf.ConfigProto(inter_op_parallelism_threads=int(os.environ['NUM_INTER_THREADS']),intra_op_parallelism_threads=int(os.environ['NUM_INTRA_THREADS']))) as sess:
                 with tf.Session() as sess:
 	    		saver.restore(sess=sess,save_path=save_path)
 			coord = tf.train.Coordinator()
@@ -308,14 +312,9 @@ if __name__ == "__main__":
     testDataBatch32, testLabelbatch32 = tf.cast(testDataBatch64,tf.float32),tf.cast(testLabelbatch64,tf.float32)
 
 
-    trainCosmo = CosmoNet(train_data=NbodySimuDataBatch32,train_label=NbodySimuLabelBatch32,val_data=valDataBatch32,val_label=valLabelbatch32,test_data=testDataBatch32,test_label=testLabelbatch32,is_train=True, is_test=True)
-
+    trainCosmo = CosmoNet(train_data=NbodySimuDataBatch32,train_label=NbodySimuLabelBatch32,val_data=valDataBatch32,val_label=valLabelbatch32,test_data=testDataBatch32,test_label=testLabelbatch32,is_train=True, is_test=False)
 
     trainCosmo.train()
     #np.savetxt("losses4.txt",losses)
     #np.savetxt("accuracy4.txt",val_accuracys)
     #np.savetxt("data_accuracy4.txt",data_accuracys)
-
-    
-    
-            
