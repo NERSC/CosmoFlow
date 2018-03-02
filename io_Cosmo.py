@@ -140,22 +140,24 @@ def readTestSet(filenames):
 
 if __name__ == '__main__':
   ###I've replaced 400 with 100 and 499 with 120
-    order = np.random.permutation(64*400)
-    order = np.split(np.append(order,np.arange(64*400,64*499)),499)
+    order = np.random.permutation(64*1600)
+    order = np.split(np.append(order,np.arange(64*1600,64*2000)),2000)
     
-    label_path = os.path.join('/global/cscratch1/sd/djbard/MUSIC_pyCola/egpbos-pycola-672c58551ff1/OmSiH','basic_info_3_reformat.txt')
+    label_path = os.path.join('/global/cscratch1/sd/djbard/MUSIC_pyCola/egpbos-pycola-672c58551ff1/OmSiH','basic_info_3_2k.txt')
     print label_path
     labels = np.loadtxt(label_path,delimiter=',')
     print labels.shape
       
-    for i in range(0,499): ## up to 499
+    for i in range(0,2000): ## up to 499
         data = []
         label = []
         for j in order[i]:
         
             numDirectory = int(j/64)
+            thedir = 1000+numDirectory
+            
             numFile = j%64
-            data_path = os.path.join('/global/cscratch1/sd/djbard/MUSIC_pyCola/egpbos-pycola-672c58551ff1/OmSiH',str('01')+str(numDirectory).rjust(3,'0'),str(numFile)+'.npy')
+            data_path = os.path.join('/global/cscratch1/sd/djbard/MUSIC_pyCola/egpbos-pycola-672c58551ff1/OmSiH',str('0')+str(thedir).rjust(3,'0'),str(numFile)+'.npy')
             data = np.append(data,np.load(data_path))
 
             label = np.append(label,labels[numDirectory][[1,2,3]])
