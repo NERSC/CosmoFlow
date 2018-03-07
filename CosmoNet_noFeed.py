@@ -194,6 +194,7 @@ class CosmoNet:
             totsize = sum([reduce(lambda x, y: x*y, v.get_shape().as_list()) for v in tf.trainable_variables()])
             mc.init(1, 1, totsize, "tensorflow")
             hp.RUNPARAM['batch_per_epoch'] = hp.RUNPARAM['batch_per_epoch'] / mc.get_nranks()
+            hp.RUNPARAM['batch_per_epoch_val'] = hp.RUNPARAM['batch_per_epoch_val'] / mc.get_nranks()
             totsteps = hp.RUNPARAM['num_epoch'] * hp.RUNPARAM['batch_per_epoch']
             mc.config_team(0, 0, totsteps, totsteps, 2, 50)
 
@@ -242,28 +243,36 @@ class CosmoNet:
                                   print("Train Step: " + str(i) + ", Samples/Sec = " + str(samps_per_sec) + ", Loss = " + str(lossTrain))
                                
         	                loss_per_epoch_train +=lossL1Train_
-        	        losses.append(loss_per_epoch_train/hp.RUNPARAM['batch_per_epoch'])
-			losses_train.append(loss_per_epoch_train/hp.RUNPARAM['batch_per_epoch'])
+
+                        global_loss = np.array([loss_per_epoch_train],dtype=np.float32)
+                        mc.average(global_loss)
+                        loss_per_epoch_train = global_loss / hp.RUNPARAM['batch_per_epoch']
+        	        losses.append(loss_per_epoch_train)
+			losses_train.append(loss_per_epoch_train)
 			
                         
 			for i in range(hp.RUNPARAM['batch_per_epoch_val']):
                                 if (mc.get_rank() == 0):
                                   print("Val Step = " + str(i))
 				loss_,val_true_,val_predict_ = sess.run([lossL1Val,val_true,val_predict])
-        	                loss_per_epoch_val += loss_
-			losses_val.append(loss_per_epoch_val/hp.RUNPARAM['batch_per_epoch_val'])
+                                loss_per_epoch_val += loss_
+
+                        global_loss = np.array([loss_per_epoch_val],dtype=np.float32)
+                        mc.average(global_loss)
+                        loss_per_epoch_val = global_loss / hp.RUNPARAM['batch_per_epoch_val']
+			losses_val.append(loss_per_epoch_val)
 
                        
-        	        if(loss_per_epoch_val/hp.RUNPARAM['batch_per_epoch_val'] < best_validation_accuracy):
-				best_validation_accuracy  = loss_per_epoch_val/hp.RUNPARAM['batch_per_epoch_val'] 
+        	        if(loss_per_epoch_val < best_validation_accuracy):
+				best_validation_accuracy  = loss_per_epoch_val
 				last_improvement = total_iterations
 				if (mc.get_rank() == 0):
 					saver.save(sess=sess, save_path=save_path)
 
 			if (mc.get_rank() == 0):
 				print("Epoch {} took {:.3f}s".format(epoch, time.time() - start_time))
-				print "  training loss: %.3f" %(loss_per_epoch_train/hp.RUNPARAM['batch_per_epoch'])
-				print "  validation loss: %.3f" %(loss_per_epoch_val/hp.RUNPARAM['batch_per_epoch_val'])
+				print "  training loss: %.3f" %(loss_per_epoch_train)
+				print "  validation loss: %.3f" %(loss_per_epoch_val)
 				print "  best loss: %.3f"%best_validation_accuracy	
 				np.savetxt(os.path.join(hp.Path['train_result'],'loss_train.txt'),losses_train)
 				np.savetxt(os.path.join(hp.Path['val_result'],'loss_val.txt'),losses_val)
