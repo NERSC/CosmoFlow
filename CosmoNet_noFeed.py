@@ -4,11 +4,7 @@ import tensorflow as tf
 import numpy as np
 from io_Cosmo import *
 import hyper_parameters_Cosmo as hp
-#import matplotlib
-#matplotlib.use('Agg')
-#import matplotlib.pyplot as plt
 import time
-from numpy import linalg as LA
 
 #import the Cray PE ML Plugin
 import ml_comm as mc
@@ -23,6 +19,9 @@ if "cori" in os.environ['HOST']:
 #        return tf.Variable(initial)
 
 
+zscored_average = hp.DATAPARAM['zsAVG']
+zscored_std = hp.DATAPARAM['zsSTD']
+
 def weight_variable(shape,name):
 	W = tf.get_variable(name,shape=shape, initializer=tf.contrib.layers.xavier_initializer())
 	return W
@@ -36,7 +35,7 @@ def lrelu(x, alpha):
 
 
 class CosmoNet:
-    def __init__(self,train_data = None,train_label = None, val_data = None, val_label = None, test_data = None, test_label = None, is_train = None, is_test = None):
+    def __init__(self,train_data,train_label, val_data = None, val_label = None, test_data = None, test_label = None, is_train = None, is_test = None, save_path = None):
         self.train_data = train_data
         self.train_label = train_label
         self.val_data = val_data
@@ -45,7 +44,7 @@ class CosmoNet:
 	self.test_label = test_label
 	self.is_train = is_train
 	self.is_test = is_test
-        
+        self.save_path = save_path
         #self.num_parameters = 3*3*3*1*2+4*4*4*2*12+4*4*4*12*64+3*3*3*64*64+2*2*2*64*128+2*2*2*128*12+1024*1024+1024*256+256*2
         self.num_parameters = 1
 
@@ -53,24 +52,35 @@ class CosmoNet:
         self.W = {}
         self.b = {}
         self.bn_param = {}
-        self.W['W_conv1'] = weight_variable([3, 3, 3, 1, 2],'w1')
-	self.b['b_conv1'] = bias_variable([2])
-	self.W['W_conv2'] = weight_variable([4, 4, 4, 2, 12],'w2')
-	self.b['b_conv2'] = bias_variable([12])
-	self.W['W_conv3'] = weight_variable([4,4,4,12,64],'w3')
+        self.W['W_conv1'] = weight_variable([3, 3, 3, 1, 16],'w1')
+	self.b['b_conv1'] = bias_variable([16])
+	self.W['W_conv2'] = weight_variable([4, 4, 4, 16, 32],'w2')
+	self.b['b_conv2'] = bias_variable([32])
+	self.W['W_conv3'] = weight_variable([4,4,4,32,64],'w3')
 	self.b['b_conv3'] = bias_variable([64])
 	self.W['W_conv4'] = weight_variable([3,3,3,64,64],'w4')
 	self.b['b_conv4'] = bias_variable([64])
+
+
+
         self.W['W_conv5'] = weight_variable([2,2,2,64,128],'w5')
         self.b['b_conv5'] = bias_variable([128])
-	self.W['W_conv6'] = weight_variable([2,2,2,128,128],'w6')
-	self.b['b_conv6'] = bias_variable([128])
-	self.W['W_fc1'] = weight_variable([1024,1024],'w7')
+
+#	self.W['W_conv6'] = weight_variable([2,2,2,128,128],'w6')
+#	self.b['b_conv6'] = bias_variable([128])
+
+
+
+	self.W['W_conv7'] = weight_variable([2,2,2,128,128],'w7')
+	self.b['b_conv7'] = bias_variable([128])
+
+
+	self.W['W_fc1'] = weight_variable([128*8,1024],'w8')
         self.b['b_fc1'] = bias_variable([1024])
-	self.W['W_fc2'] = weight_variable([1024,256],'w8')
+	self.W['W_fc2'] = weight_variable([1024,256],'w9')
         self.b['b_fc2'] = bias_variable([256])
-	self.W['W_fc3'] = weight_variable([256,2],'w9')
-        self.b['b_fc3'] = bias_variable([2])
+	self.W['W_fc3'] = weight_variable([256,hp.DATAPARAM['output_dim']],'w10')
+        self.b['b_fc3'] = bias_variable([hp.DATAPARAM['output_dim']])
 
     #Define some fuctions that might be used   
     
@@ -83,42 +93,60 @@ class CosmoNet:
         # First convolutional layer
         with tf.name_scope('conv1'):
             h_conv1 = lrelu(self.BatchNorm(tf.nn.conv3d(inputBatch,self.W['W_conv1'],strides = [1,1,1,1,1],padding = 'VALID') + self.b['b_conv1'],IS_TRAINING = IS_TRAINING, scope = scope+str(1), reuse = reuse),hp.Model['LEAK_PARAMETER'])
+            print 'hconv1', h_conv1.shape
         
 	with tf.name_scope('pool1'):
             h_pool1 = tf.nn.avg_pool3d(h_conv1, ksize=[1,2,2,2,1], strides = [1,2,2,2,1], padding = 'VALID')
+            print 'h_pool1', h_pool1.shape
             
         #Second convoluational layer
         with tf.name_scope('conv2'):
             h_conv2 = lrelu(self.BatchNorm(tf.nn.conv3d(h_pool1, self.W['W_conv2'],strides = [1,1,1,1,1],padding = 'VALID') + self.b['b_conv2'],IS_TRAINING=IS_TRAINING,scope = scope+str(2),reuse = reuse),hp.Model['LEAK_PARAMETER'])
+            print 'hconv2', h_conv2.shape
             
         with tf.name_scope('pool2'):
             h_pool2 = tf.nn.avg_pool3d(h_conv2, ksize=[1,2,2,2,1], strides = [1,2,2,2,1], padding = 'VALID')
+            print 'h_pool2', h_pool2.shape
         
         #Third convoluational layer
         with tf.name_scope('conv3'):
             h_conv3 = lrelu(self.BatchNorm(tf.nn.conv3d(h_pool2, self.W['W_conv3'],strides = [1,2,2,2,1],padding = 'VALID') + self.b['b_conv3'],IS_TRAINING=IS_TRAINING, scope = scope+str(3),reuse=reuse),hp.Model['LEAK_PARAMETER'])
+            print 'hconv3', h_conv3.shape
         
         #Fourth convoluational layer
         with tf.name_scope('conv4'):
             h_conv4 = lrelu(self.BatchNorm(tf.nn.conv3d(h_conv3, self.W['W_conv4'],strides = [1,1,1,1,1],padding = 'VALID') + self.b['b_conv4'],IS_TRAINING=IS_TRAINING,scope = scope+str(4),reuse=reuse),hp.Model['LEAK_PARAMETER'])
+            print 'hconv4', h_conv4.shape
         
+
         #Fifth convolutional layer
         with tf.name_scope('conv5'):
             h_conv5 = lrelu(self.BatchNorm(tf.nn.conv3d(h_conv4, self.W['W_conv5'],strides = [1,1,1,1,1],padding = 'VALID') + self.b['b_conv5'],IS_TRAINING=IS_TRAINING,scope = scope+str(5),reuse=reuse),hp.Model['LEAK_PARAMETER'])
-            
+            print 'hconv5', h_conv5.shape
+
         #Sixth convolutional layer
-        with tf.name_scope('conv6'):
-            h_conv6 = lrelu(self.BatchNorm(tf.nn.conv3d(h_conv5, self.W['W_conv6'],strides = [1,1,1,1,1],padding = 'VALID') + self.b['b_conv6'],IS_TRAINING=IS_TRAINING,scope = scope+str(6),reuse=reuse),hp.Model['LEAK_PARAMETER'])
+#        with tf.name_scope('conv6'):
+#            h_conv6 = lrelu(self.BatchNorm(tf.nn.conv3d(h_conv5, self.W['W_conv6'],strides = [1,1,1,1,1],padding = 'VALID') + self.b['b_conv6'],IS_TRAINING=IS_TRAINING,scope = scope+str(6),reuse=reuse),hp.Model['LEAK_PARAMETER'])
+	
+        #Seventh convolutional layer
+        with tf.name_scope('conv7'):
+            h_conv7 = lrelu(self.BatchNorm(tf.nn.conv3d(h_conv5, self.W['W_conv7'],strides = [1,1,1,1,1],padding = 'VALID') + self.b['b_conv7'],IS_TRAINING=IS_TRAINING,scope = scope+str(7),reuse=reuse),hp.Model['LEAK_PARAMETER'])
+	    print 'hconv7', h_conv7.shape
+
         
         with tf.name_scope('fc1'):
-            h_conv6_flat = tf.reshape(h_conv6,[-1,1024])
-            h_fc1 = lrelu(tf.matmul(tf.nn.dropout(h_conv6_flat,keep_prob), self.W['W_fc1']) + self.b['b_fc1'],hp.Model['LEAK_PARAMETER'])
+            h_conv7_flat = tf.reshape(h_conv7,[-1,1024])
+	    print 'hconv7_flat', h_conv7_flat.shape
+            h_fc1 = lrelu(tf.matmul(tf.nn.dropout(h_conv7_flat,keep_prob), self.W['W_fc1']) + self.b['b_fc1'],hp.Model['LEAK_PARAMETER'])
+	    print 'hfc1', h_fc1.shape
         
         with tf.name_scope('fc2'):
             h_fc2 = lrelu(tf.matmul(tf.nn.dropout(h_fc1,keep_prob), self.W['W_fc2']) + self.b['b_fc2'],hp.Model['LEAK_PARAMETER'])
+	    print 'hfc2', h_fc2.shape
             
         with tf.name_scope('fc3'):
             h_fc3 = tf.matmul(tf.nn.dropout(h_fc2,keep_prob), self.W['W_fc3']) + self.b['b_fc3']
+	    print 'hfc3', h_fc3.shape
             return h_fc3
     
             
@@ -126,28 +154,28 @@ class CosmoNet:
         with tf.name_scope('loss'):
             predictions = self.deepNet(inputBatch = self.train_data,IS_TRAINING = True,keep_prob = hp.Model['DROP_OUT'],scope='conv_bn',reuse = None)
             lossL1 = tf.reduce_mean(tf.abs(self.train_label-predictions))
-            for w in self.W:
-                lossL1 += hp.Model["REG_RATE"]*tf.nn.l2_loss(self.W[w])/self.num_parameters
+            #for w in self.W:
+            #    lossL1 += hp.Model["REG_RATE"]*tf.nn.l2_loss(self.W[w])/self.num_parameters
             return lossL1
     
     def validation_loss(self):
         val_predict = self.deepNet(inputBatch = self.val_data,IS_TRAINING = False,keep_prob = 1,scope='conv_bn',reuse=True)
-        val_predict = val_predict*tf.constant([2.905168635566176411e-02,4.023372385668218254e-02],dtype = tf.float32)+tf.constant([2.995679839999998983e-01,8.610806619999996636e-01],dtype = tf.float32)
-        val_true = self.val_label*tf.constant([2.905168635566176411e-02,4.023372385668218254e-02],dtype = tf.float32)+tf.constant([2.995679839999998983e-01,8.610806619999996636e-01],dtype = tf.float32)
+        val_predict = val_predict*tf.constant(zscored_std,dtype = tf.float32)+tf.constant(zscored_average,dtype = tf.float32)
+        val_true = self.val_label*tf.constant(zscored_std,dtype = tf.float32)+tf.constant(zscored_average,dtype = tf.float32)
         lossL1Val = tf.reduce_mean(tf.abs(val_true-val_predict)/val_true)
         return lossL1Val,val_true,val_predict
 
     def train_loss(self):
 	train_predict = self.deepNet(inputBatch = self.train_data,IS_TRAINING = False,keep_prob = 1,scope='conv_bn',reuse=True)
-        train_predict = train_predict*tf.constant([2.905168635566176411e-02,4.023372385668218254e-02],dtype = tf.float32)+tf.constant([2.995679839999998983e-01,8.610806619999996636e-01],dtype = tf.float32)
-        train_true = self.train_label*tf.constant([2.905168635566176411e-02,4.023372385668218254e-02],dtype = tf.float32)+tf.constant([2.995679839999998983e-01,8.610806619999996636e-01],dtype = tf.float32)
+        train_predict = train_predict*tf.constant(zscored_std,dtype = tf.float32)+tf.constant(zscored_average,dtype = tf.float32)
+        train_true = self.train_label*tf.constant(zscored_std,dtype = tf.float32)+tf.constant(zscored_average,dtype = tf.float32)
         lossL1Train = tf.reduce_mean(tf.abs(train_true-train_predict)/train_true)
 	return lossL1Train,train_true,train_predict
 
     def test_loss(self):
         test_predict = self.deepNet(inputBatch = self.test_data,IS_TRAINING = False,keep_prob = 1,scope='conv_bn',reuse=True)
-        test_predict = test_predict*tf.constant([2.905168635566176411e-02,4.023372385668218254e-02],dtype = tf.float32)+tf.constant([2.995679839999998983e-01,8.610806619999996636e-01],dtype = tf.float32)
-        test_true = self.test_label*tf.constant([2.905168635566176411e-02,4.023372385668218254e-02],dtype = tf.float32)+tf.constant([2.995679839999998983e-01,8.610806619999996636e-01],dtype = tf.float32)
+        test_predict = test_predict*tf.constant(zscored_std,dtype = tf.float32)+tf.constant(zscored_average,dtype = tf.float32)
+        test_true = self.test_label*tf.constant(zscored_std,dtype = tf.float32)+tf.constant(zscored_average,dtype = tf.float32)
         lossL1Test = tf.reduce_mean(tf.abs(test_true-test_predict)/test_true)
         return lossL1Test,test_true,test_predict
 
@@ -174,14 +202,12 @@ class CosmoNet:
         lossL1Test,test_true,test_predict = self.test_loss()
         
 	config = tf.ConfigProto()
-        #config.gpu_options.per_process_gpu_memory_fraction = 0.4
+        config.gpu_options.per_process_gpu_memory_fraction = 0.4
  
         ### taking config from the MKL benchmarks. 
         config.allow_soft_placement = True
         config.intra_op_parallelism_threads = 1 ## default
         config.inter_op_parallelism_threads = 2 ## Default
-
-
 
         #used to save the model
 	saver = tf.train.Saver()
@@ -214,7 +240,6 @@ class CosmoNet:
         bcast    = tf.group(*[tf.assign(v,new_vars[k]) for k,v in enumerate(tf.trainable_variables())])
 
 	if(self.is_train):
-
             with tf.Session(config=config) as sess:
         	losses_train = []  
         	losses_val = []
@@ -246,7 +271,7 @@ class CosmoNet:
                                 samps_per_sec = mc.get_nranks() * (epoch * hp.RUNPARAM['batch_per_epoch'] * hp.Input['BATCH_SIZE'] + (i+1) * hp.Input['BATCH_SIZE']) / elapsed_time
                                 if (mc.get_rank() == 0):
                                   print("Train Step: " + str(i) + ", Samples/Sec = " + str(samps_per_sec) + ", Loss = " + str(lossTrain))
-                               
+                        
         	                loss_per_epoch_train +=lossL1Train_
 
                         global_loss = np.array([loss_per_epoch_train],dtype=np.float32)
@@ -255,7 +280,6 @@ class CosmoNet:
         	        losses.append(loss_per_epoch_train)
 			losses_train.append(loss_per_epoch_train)
 			
-                        
 			for i in range(hp.RUNPARAM['batch_per_epoch_val']):
                                 if (mc.get_rank() == 0):
                                   print("Val Step = " + str(i))
@@ -267,7 +291,6 @@ class CosmoNet:
                         loss_per_epoch_val = global_loss / hp.RUNPARAM['batch_per_epoch_val']
 			losses_val.append(loss_per_epoch_val)
 
-                       
         	        if(loss_per_epoch_val < best_validation_accuracy):
 				best_validation_accuracy  = loss_per_epoch_val
 				last_improvement = total_iterations
@@ -293,8 +316,12 @@ class CosmoNet:
                 coord.join(threads);
 
 	if(self.is_test and mc.get_rank() == 0):
-                
-                with tf.Session() as sess:
+               
+			save_path = os.path.join(hp.Path['Model_path'], 'best_validation')
+		if self.save_path != None:
+			save_path = self.save_path
+
+		with tf.Session() as sess:
 	    		saver.restore(sess=sess,save_path=save_path)
 			coord = tf.train.Coordinator()
                 	threads = tf.train.start_queue_runners(coord=coord)
@@ -314,14 +341,12 @@ class CosmoNet:
         mc.finalize()
 
 if __name__ == "__main__":
-    NbodySimuDataBatch64, NbodySimuLabelBatch64 = readDataSet(filenames = [hp.Path['train_data']+str(i)+'.tfrecord' for i in range(0,400)])
+    NbodySimuDataBatch64, NbodySimuLabelBatch64 = readDataSet(filenames = [hp.Path['train_data']+str(i)+'.tfrecord' for i in range(0,(hyper_parameters_Cosmo.RUNPARAM["num_train"]))])
     NbodySimuDataBatch32, NbodySimuLabelBatch32 = tf.cast(NbodySimuDataBatch64,tf.float32),tf.cast(NbodySimuLabelBatch64,tf.float32)
-    valDataBatch64, valLabelbatch64 = readDataSet(filenames=[hp.Path['val_data']+str(i)+".tfrecord" for i in range(400,450)]);
+    valDataBatch64, valLabelbatch64 = readDataSet(filenames=[hp.Path['val_data']+'/'+str(i)+".tfrecord" for i in range((hyper_parameters_Cosmo.RUNPARAM["num_train"]),(hyper_parameters_Cosmo.RUNPARAM["num_train"]+hyper_parameters_Cosmo.RUNPARAM["num_val"]))]);
     valDataBatch32, valLabelbatch32 = tf.cast(valDataBatch64,tf.float32),tf.cast(valLabelbatch64,tf.float32)
-    testDataBatch64, testLabelbatch64 = readTestSet(filenames=[hp.Path['test_data']+str(i)+".tfrecord" for i in range(450,499)]);
+    testDataBatch64, testLabelbatch64 = readTestSet(filenames=[hp.Path['test_data']+'/'+str(i)+".tfrecord" for i in range((hyper_parameters_Cosmo.RUNPARAM["num_train"]+hyper_parameters_Cosmo.RUNPARAM["num_val"]),(hyper_parameters_Cosmo.RUNPARAM["num_train"]+hyper_parameters_Cosmo.RUNPARAM["num_val"]+hyper_parameters_Cosmo.RUNPARAM["num_test"]))]);
     testDataBatch32, testLabelbatch32 = tf.cast(testDataBatch64,tf.float32),tf.cast(testLabelbatch64,tf.float32)
-
-
     trainCosmo = CosmoNet(train_data=NbodySimuDataBatch32,train_label=NbodySimuLabelBatch32,val_data=valDataBatch32,val_label=valLabelbatch32,test_data=testDataBatch32,test_label=testLabelbatch32,is_train=True, is_test=True)
 
     trainCosmo.train()

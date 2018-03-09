@@ -4,6 +4,8 @@ import hyper_parameters_Cosmo
 import os
 import itertools
 
+
+
 def _float64_feature(value):
   return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
 
@@ -40,7 +42,7 @@ class loadTfrecordData:
             data_raw = (example.features.feature['data_raw'].bytes_list.value[0])
             data = np.fromstring(data_raw, dtype=np.float).reshape([-1,64,64,64,1])
             label_raw = (example.features.feature['label_raw'].bytes_list.value[0])
-            label = np.fromstring(label_raw,dtype=np.float).reshape([-1,2])
+            label = np.fromstring(label_raw,dtype=np.float).reshape([-1,hyper_parameters_Cosmo.DATAPARAM["output_dim"] ])
         return data,label
 
 def read_tfrecord(filename_queue):
@@ -73,11 +75,16 @@ def read_tfrecord(filename_queue):
     #normalize
     NbodySimus /= (tf.reduce_sum(NbodySimus)/64**3+0.)
     NbodySimuAddDim = tf.expand_dims(NbodySimus,axis = 3)
-    label = tf.reshape(labelDecode,[2])
-    label = (label - tf.constant([2.995679839999998983e-01,8.610806619999996636e-01],dtype = tf.float64))/tf.constant([2.905168635566176411e-02,4.023372385668218254e-02],dtype = tf.float64)
+    label = tf.reshape(labelDecode,[hyper_parameters_Cosmo.DATAPARAM["output_dim"] ])
+    ###
+    ### 0.3, 0.02853, 0.8628, 0.04887, 0.701,0.05691
+    label = (label - tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsAVG'],dtype = tf.float64))/tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsSTD']
+,dtype = tf.float64)
     return NbodySimuAddDim,label
     
 def readDataSet(filenames):
+    print "---readDataSet-ioCosmo------"
+    print filenames
     filename_queue = tf.train.string_input_producer(filenames,num_epochs=None,shuffle=True)
     NbodySimus,label= read_tfrecord(filename_queue)
     #NbodyList = [read_tfrecord(filename_queue) for _ in range(hyper_parameters_Cosmo.Input["NUM_THREADS"])]
@@ -109,30 +116,18 @@ def read_test_tfrecord(filename_queue):
     NbodySimus = tf.reshape(NbodySimuDecode,[64,64,64])
     NbodySimus /= (tf.reduce_sum(NbodySimus)/64**3+0.)
     NbodySimuAddDim = tf.expand_dims(NbodySimus,3)
-    label = tf.reshape(labelDecode,[2])
-    labelAddDim = (label - tf.constant([2.995679839999998983e-01,8.610806619999996636e-01],dtype = tf.float64))/tf.constant([2.905168635566176411e-02,4.023372385668218254e-02],dtype = tf.float64)
+    label = tf.reshape(labelDecode,[hyper_parameters_Cosmo.DATAPARAM["output_dim"] ])
+    ### 0.3, 0.02853, 0.8628, 0.04887, 0.701,0.05691
+    labelAddDim = (label - tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsAVG'],dtype = tf.float64))/tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsSTD']
+,dtype = tf.float64)
     print NbodySimuAddDim.shape
-    '''        
-    NbodySimuAddDimList = []
-    #augment 
-    for trans in itertools.permutations([0,1,2]):
-	NbodySimuTrans = tf.transpose(NbodySimus, perm = tuple(trans))
-	for flips in list(itertools.product([True, False], repeat=3)):
-		Nbody = tf.identity(NbodySimuTrans)
-		if flips[0]: Nbody = Nbody[::-1,...]
-                if flips[1]: Nbody = Nbody[:,::-1,...]
-                if flips[2]: Nbody = Nbody[:,:,::-1]
-		NbodySimuAddDimList.append(tf.expand_dims(Nbody,0))
-    
-    NbodySimuAddDim = tf.concat(NbodySimuAddDimList,0);
-    #normalize
-    label = tf.reshape(labelDecode,[2])
-    label = (label - tf.constant([2.995679839999998983e-01,8.610806619999996636e-01],dtype = tf.float64))/tf.constant([2.905168635566176411e-02,4.023372385668218254e-02],dtype = tf.float64)
-    labelAddDim = tf.tile(tf.expand_dims(label,0),tf.constant([48,1]))
-    '''
+   
+
+
     return NbodySimuAddDim,labelAddDim
     
 def readTestSet(filenames):
+    print "----readTestSet-io_cosmo----"
     filename_queue = tf.train.string_input_producer(filenames,num_epochs=None,shuffle=False)
     NbodySimus,label= read_test_tfrecord(filename_queue)
     NbodySimus_batch, label_batch = tf.train.batch(
@@ -148,11 +143,13 @@ def readTestSet(filenames):
        
         
 
+
+######## for genererating data
 if __name__ == '__main__':
     order = np.random.permutation(64*400)
     order = np.split(np.append(order,np.arange(64*400,64*499)),499)
     
-    label_path = os.path.join('/global/cscratch1/sd/djbard/cosmoML/NbodySimu/','basics_infos_1000_1499.txt')
+    label_path = os.path.join('/global/cscratch1/sd/djbard/MUSIC_pyCola/egpbos-pycola-672c58551ff1/OmSiH/','basic_info_3.txt')
     labels = np.loadtxt(label_path,delimiter=',')    
        
     for i in range(0,499):
@@ -163,21 +160,6 @@ if __name__ == '__main__':
             numFile = j%64
             data_path = os.path.join('/global/cscratch1/sd/djbard/cosmoML/NbodySimu/',str('01')+str(numDirectory).rjust(3,'0'),str(numFile)+'.npy')
             data = np.append(data,np.load(data_path))
-            label = np.append(label,labels[numDirectory][[1,3]])
-        loadNpyData(data.reshape(-1,64,64,64,1),label.reshape(-1,2),i).convert_to()
+            label = np.append(label,labels[numDirectory][[1,4]])
+        loadNpyData(data.reshape(-1,64,64,64,1),label.reshape(-1,3),i).convert_to()
     
-    '''
-    NbodySimu, NbodyLabel = readTestSet(filenames=["400.tfrecord","401.tfrecord"])
-    with tf.Session() as sess:
-	sess.run(tf.global_variables_initializer())
-        coord = tf.train.Coordinator();
-        threads = tf.train.start_queue_runners(coord=coord);
-        for i in range(65):
-            _NbodySimu,_NbodyLabel = sess.run([NbodySimu, NbodyLabel])
-	    print (_NbodySimu[0])
-            print ("----------------");
-	
-	coord.request_stop()
-	coord.join()
-    '''
-  
