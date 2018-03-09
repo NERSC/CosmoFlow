@@ -317,9 +317,9 @@ class CosmoNet:
 
 	if(self.is_test and mc.get_rank() == 0):
                
-			save_path = os.path.join(hp.Path['Model_path'], 'best_validation')
+		save_path = os.path.join(hp.Path['Model_path'], 'best_validation')
 		if self.save_path != None:
-			save_path = self.save_path
+		    save_path = self.save_path
 
 		with tf.Session() as sess:
 	    		saver.restore(sess=sess,save_path=save_path)
