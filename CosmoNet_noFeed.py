@@ -12,6 +12,11 @@ from numpy import linalg as LA
 
 #import the Cray PE ML Plugin
 import ml_comm as mc
+import os
+
+if "cori" in os.environ['HOST']:
+  os.environ['OMP_NUM_THREADS'] = "66"
+  os.environ['KMP_AFFINITY']    = "granularity=fine,verbose,compact,1,0"
 
 #def weight_variable(shape):
 #        initial = tf.truncated_normal(shape, stddev=0.1)
@@ -188,27 +193,27 @@ class CosmoNet:
 	require_improvement = hp.RUNPARAM['require_improvement']               #Stop optimization if no improvement found in this many iterations.
         total_iterations = 0                   #Counter for total number of iterations performed so far.        
 
+        #initialize the CPE ML Plugin with one team (single thread for now) and the model size
+        totsize = sum([reduce(lambda x, y: x*y, v.get_shape().as_list()) for v in tf.trainable_variables()])
+        mc.init(1, 1, totsize, "tensorflow")
+        hp.RUNPARAM['batch_per_epoch'] = hp.RUNPARAM['batch_per_epoch'] / mc.get_nranks()
+        hp.RUNPARAM['batch_per_epoch_val'] = hp.RUNPARAM['batch_per_epoch_val'] / mc.get_nranks()
+        totsteps = hp.RUNPARAM['num_epoch'] * hp.RUNPARAM['batch_per_epoch']
+        mc.config_team(0, 0, totsteps, totsteps, 2, 50)
+
+        if (mc.get_rank() == 0):
+            print("+------------------------------+")
+            print("| CosmoFlow                    |")
+            print("| # Ranks = {:5d}              |".format(mc.get_nranks()))
+            print("| Global Batch = {:6d}        |".format(mc.get_nranks() * hp.Input['BATCH_SIZE']))
+            print("| # Parameters = {:9d}     |".format(totsize))
+            print("+------------------------------+")
+
+        #use the CPE ML Plugin to broadcast initial model parameter values
+        new_vars = mc.broadcast(tf.trainable_variables(),0)
+        bcast    = tf.group(*[tf.assign(v,new_vars[k]) for k,v in enumerate(tf.trainable_variables())])
+
 	if(self.is_train):
-
-            #initialize the CPE ML Plugin with one team (single thread for now) and the model size
-            totsize = sum([reduce(lambda x, y: x*y, v.get_shape().as_list()) for v in tf.trainable_variables()])
-            mc.init(1, 1, totsize, "tensorflow")
-            hp.RUNPARAM['batch_per_epoch'] = hp.RUNPARAM['batch_per_epoch'] / mc.get_nranks()
-            hp.RUNPARAM['batch_per_epoch_val'] = hp.RUNPARAM['batch_per_epoch_val'] / mc.get_nranks()
-            totsteps = hp.RUNPARAM['num_epoch'] * hp.RUNPARAM['batch_per_epoch']
-            mc.config_team(0, 0, totsteps, totsteps, 2, 50)
-
-            if (mc.get_rank() == 0):
-                print("+------------------------------+")
-                print("| CosmoFlow                    |")
-                print("| # Ranks = {:5d}              |".format(mc.get_nranks()))
-                print("| Global Batch = {:6d}        |".format(mc.get_nranks() * hp.Input['BATCH_SIZE']))
-		print("| # Parameters = {:9d}     |".format(totsize))
-                print("+------------------------------+") 
- 
-            #use the CPE ML Plugin to broadcast initial model parameter values
-            new_vars = mc.broadcast(tf.trainable_variables(),0)
-            bcast    = tf.group(*[tf.assign(v,new_vars[k]) for k,v in enumerate(tf.trainable_variables())])
 
             with tf.Session(config=config) as sess:
         	losses_train = []  
@@ -287,10 +292,7 @@ class CosmoNet:
 		coord.request_stop();
                 coord.join(threads);
 
-            #cleanup the CPE ML Plugin
-            mc.finalize()
-
-	if(self.is_test):
+	if(self.is_test and mc.get_rank() == 0):
                 
                 with tf.Session() as sess:
 	    		saver.restore(sess=sess,save_path=save_path)
@@ -307,10 +309,9 @@ class CosmoNet:
 	    		np.savetxt(os.path.join(hp.Path['test_result'],'loss_test.txt'),loss_test)
                 	coord.request_stop()
 			coord.join(threads)
-   
 
-	    
-	    	
+        #cleanup the CPE ML Plugin
+        mc.finalize()
 
 if __name__ == "__main__":
     NbodySimuDataBatch64, NbodySimuLabelBatch64 = readDataSet(filenames = [hp.Path['train_data']+str(i)+'.tfrecord' for i in range(0,400)])
@@ -321,7 +322,7 @@ if __name__ == "__main__":
     testDataBatch32, testLabelbatch32 = tf.cast(testDataBatch64,tf.float32),tf.cast(testLabelbatch64,tf.float32)
 
 
-    trainCosmo = CosmoNet(train_data=NbodySimuDataBatch32,train_label=NbodySimuLabelBatch32,val_data=valDataBatch32,val_label=valLabelbatch32,test_data=testDataBatch32,test_label=testLabelbatch32,is_train=True, is_test=False)
+    trainCosmo = CosmoNet(train_data=NbodySimuDataBatch32,train_label=NbodySimuLabelBatch32,val_data=valDataBatch32,val_label=valLabelbatch32,test_data=testDataBatch32,test_label=testLabelbatch32,is_train=True, is_test=True)
 
     trainCosmo.train()
     #np.savetxt("losses4.txt",losses)
