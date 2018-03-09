@@ -6,6 +6,14 @@ from io_Cosmo import *
 import hyper_parameters_Cosmo as hp
 import time
 
+#import the Cray PE ML Plugin
+import ml_comm as mc
+import os
+
+if "cori" in os.environ['HOST']:
+  os.environ['OMP_NUM_THREADS'] = "66"
+  os.environ['KMP_AFFINITY']    = "granularity=fine,verbose,compact,1,0"
+
 #def weight_variable(shape):
 #        initial = tf.truncated_normal(shape, stddev=0.1)
 #        return tf.Variable(initial)
@@ -176,7 +184,14 @@ class CosmoNet:
         with tf.name_scope('adam_optimizer'):
 	    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 	    with tf.control_dependencies(update_ops):
-	        train_step = tf.train.AdamOptimizer(hp.Model['LEARNING_RATE']).minimize(loss)
+
+		#use the CPE ML Plugin to average gradients across processes
+		optimizer      = tf.train.AdamOptimizer(hp.Model['LEARNING_RATE'])
+		grads_and_vars = optimizer.compute_gradients(loss)
+		grads          = mc.gradients([gv[0] for gv in grads_and_vars], 0)
+		gs_and_vs      = [(g,v) for (_,v), g in zip(grads_and_vars, grads)]
+		train_step     = optimizer.apply_gradients(gs_and_vs)
+
 
 	lossL1Train,train_true,train_predict = self.train_loss()    
         return train_step, loss,lossL1Train,train_true,train_predict
@@ -189,6 +204,11 @@ class CosmoNet:
 	config = tf.ConfigProto()
         config.gpu_options.per_process_gpu_memory_fraction = 0.4
  
+        ### taking config from the MKL benchmarks. 
+        config.allow_soft_placement = True
+        config.intra_op_parallelism_threads = 1 ## default
+        config.inter_op_parallelism_threads = 2 ## Default
+
         #used to save the model
 	saver = tf.train.Saver()
         global best_validation_accuracy
@@ -198,59 +218,105 @@ class CosmoNet:
 	last_improvement = 0                   #Iteration-number for last improvement to validation accuracy.
 	require_improvement = hp.RUNPARAM['require_improvement']               #Stop optimization if no improvement found in this many iterations.
         total_iterations = 0                   #Counter for total number of iterations performed so far.        
-	
+
+        #initialize the CPE ML Plugin with one team (single thread for now) and the model size
+        totsize = sum([reduce(lambda x, y: x*y, v.get_shape().as_list()) for v in tf.trainable_variables()])
+        mc.init(1, 1, totsize, "tensorflow")
+        hp.RUNPARAM['batch_per_epoch'] = hp.RUNPARAM['batch_per_epoch'] / mc.get_nranks()
+        hp.RUNPARAM['batch_per_epoch_val'] = hp.RUNPARAM['batch_per_epoch_val'] / mc.get_nranks()
+        totsteps = hp.RUNPARAM['num_epoch'] * hp.RUNPARAM['batch_per_epoch']
+        mc.config_team(0, 0, totsteps, totsteps, 2, 50)
+
+        if (mc.get_rank() == 0):
+            print("+------------------------------+")
+            print("| CosmoFlow                    |")
+            print("| # Ranks = {:5d}              |".format(mc.get_nranks()))
+            print("| Global Batch = {:6d}        |".format(mc.get_nranks() * hp.Input['BATCH_SIZE']))
+            print("| # Parameters = {:9d}     |".format(totsize))
+            print("+------------------------------+")
+
+        #use the CPE ML Plugin to broadcast initial model parameter values
+        new_vars = mc.broadcast(tf.trainable_variables(),0)
+        bcast    = tf.group(*[tf.assign(v,new_vars[k]) for k,v in enumerate(tf.trainable_variables())])
+
 	if(self.is_train):
-      	    with tf.Session() as sess:
+            with tf.Session(config=config) as sess:
         	losses_train = []  
         	losses_val = []
         	losses = []
 		val_accuracys = []       
 		data_accuracys = []   
-        	sess.run(tf.global_variables_initializer())
+
+                #do all parameter initializations
+		sess.run(tf.global_variables_initializer())
 		sess.run(tf.local_variables_initializer())
+                sess.run(bcast)
+		
         	coord = tf.train.Coordinator()
         	threads = tf.train.start_queue_runners(coord=coord)
 
+                elapsed_time = 0.
 		for epoch in range(hp.RUNPARAM['num_epoch']):
-			print "epoch: ", epoch
 			save_path = os.path.join(hp.Path['Model_path'], 'best_validation')
 			total_iterations += 1
 			start_time = time.time()
         	        loss_per_epoch_val = 0
         	        loss_per_epoch_train = 0
-        	        for i in range(hp.RUNPARAM['batch_per_epoch']):  
+        	        for i in range(hp.RUNPARAM['batch_per_epoch']): 
+				step_start_time = time.time()
 				_,lossTrain,lossL1Train_,train_true_,train_predict_ = sess.run([train_step,loss,lossL1Train,train_true,train_predict])
+                                step_finish_time = time.time()
+				
+                                elapsed_time += (step_finish_time-step_start_time)
+                                samps_per_sec = mc.get_nranks() * (epoch * hp.RUNPARAM['batch_per_epoch'] * hp.Input['BATCH_SIZE'] + (i+1) * hp.Input['BATCH_SIZE']) / elapsed_time
+                                if (mc.get_rank() == 0):
+                                  print("Train Step: " + str(i) + ", Samples/Sec = " + str(samps_per_sec) + ", Loss = " + str(lossTrain))
+                        
         	                loss_per_epoch_train +=lossL1Train_
-        	        losses.append(loss_per_epoch_train/hp.RUNPARAM['batch_per_epoch'])
-			losses_train.append(loss_per_epoch_train/hp.RUNPARAM['batch_per_epoch'])
+
+                        global_loss = np.array([loss_per_epoch_train],dtype=np.float32)
+                        mc.average(global_loss)
+                        loss_per_epoch_train = global_loss / hp.RUNPARAM['batch_per_epoch']
+        	        losses.append(loss_per_epoch_train)
+			losses_train.append(loss_per_epoch_train)
 			
 			for i in range(hp.RUNPARAM['batch_per_epoch_val']):
+                                if (mc.get_rank() == 0):
+                                  print("Val Step = " + str(i))
 				loss_,val_true_,val_predict_ = sess.run([lossL1Val,val_true,val_predict])
-        	                loss_per_epoch_val += loss_
-			losses_val.append(loss_per_epoch_val/hp.RUNPARAM['batch_per_epoch_val'])
+                                loss_per_epoch_val += loss_
 
-        	        if(loss_per_epoch_val/hp.RUNPARAM['batch_per_epoch_val'] < best_validation_accuracy):
-				best_validation_accuracy  = loss_per_epoch_val/hp.RUNPARAM['batch_per_epoch_val'] 
+                        global_loss = np.array([loss_per_epoch_val],dtype=np.float32)
+                        mc.average(global_loss)
+                        loss_per_epoch_val = global_loss / hp.RUNPARAM['batch_per_epoch_val']
+			losses_val.append(loss_per_epoch_val)
+
+        	        if(loss_per_epoch_val < best_validation_accuracy):
+				best_validation_accuracy  = loss_per_epoch_val
 				last_improvement = total_iterations
-				saver.save(sess=sess, save_path=save_path)
-			
-			print("Epoch {} took {:.3f}s".format(epoch, time.time() - start_time))
-                        print "  training loss: %.3f" %(loss_per_epoch_train/hp.RUNPARAM['batch_per_epoch'])
-                        print "  validation loss: %.3f" %(loss_per_epoch_val/hp.RUNPARAM['batch_per_epoch_val'])
-                        print "  best loss: %.3f"%best_validation_accuracy	
-			np.savetxt(os.path.join(hp.Path['train_result'],'loss_train.txt'),losses_train)
-        	        np.savetxt(os.path.join(hp.Path['val_result'],'loss_val.txt'),losses_val)
-        	        np.savetxt(os.path.join(hp.Path['train_result'],'losses.txt'),losses)
-        	        #np.savetxt(os.path.join(hp.Path['train_result'],'train_pred'+str(epoch)+'.txt'),np.c_[train_true_,train_predict_])
-        	        #np.savetxt(os.path.join(hp.Path['val_result'],'val_pred'+str(epoch)+'.txt'),np.c_[val_true_,val_predict_])
+				if (mc.get_rank() == 0):
+					saver.save(sess=sess, save_path=save_path)
+
+			if (mc.get_rank() == 0):
+				print("Epoch {} took {:.3f}s".format(epoch, time.time() - start_time))
+				print "  training loss: %.3f" %(loss_per_epoch_train)
+				print "  validation loss: %.3f" %(loss_per_epoch_val)
+				print "  best loss: %.3f"%best_validation_accuracy	
+				np.savetxt(os.path.join(hp.Path['train_result'],'loss_train.txt'),losses_train)
+				np.savetxt(os.path.join(hp.Path['val_result'],'loss_val.txt'),losses_val)
+				np.savetxt(os.path.join(hp.Path['train_result'],'losses.txt'),losses)
+		                #np.savetxt(os.path.join(hp.Path['train_result'],'train_pred'+str(epoch)+'.txt'),np.c_[train_true_,train_predict_])
+        	                #np.savetxt(os.path.join(hp.Path['val_result'],'val_pred'+str(epoch)+'.txt'),np.c_[val_true_,val_predict_])
 			if(total_iterations - last_improvement > require_improvement):
-				print ("No improvement found in a while, stopping optimization.")
+				if (mc.get_rank() == 0):
+					print ("No improvement found in a while, stopping optimization.")
 				break		                        
+
 		coord.request_stop();
                 coord.join(threads);
 
-	if(self.is_test):
-		if(self.is_train == False):
+	if(self.is_test and mc.get_rank() == 0):
+               
 			save_path = os.path.join(hp.Path['Model_path'], 'best_validation')
 		if self.save_path != None:
 			save_path = self.save_path
@@ -270,11 +336,9 @@ class CosmoNet:
 	    		np.savetxt(os.path.join(hp.Path['test_result'],'loss_test.txt'),loss_test)
                 	coord.request_stop()
 			coord.join(threads)
-   
 
-
-	    
-	    	
+        #cleanup the CPE ML Plugin
+        mc.finalize()
 
 if __name__ == "__main__":
     NbodySimuDataBatch64, NbodySimuLabelBatch64 = readDataSet(filenames = [hp.Path['train_data']+str(i)+'.tfrecord' for i in range(0,(hyper_parameters_Cosmo.RUNPARAM["num_train"]))])
@@ -284,11 +348,8 @@ if __name__ == "__main__":
     testDataBatch64, testLabelbatch64 = readTestSet(filenames=[hp.Path['test_data']+'/'+str(i)+".tfrecord" for i in range((hyper_parameters_Cosmo.RUNPARAM["num_train"]+hyper_parameters_Cosmo.RUNPARAM["num_val"]),(hyper_parameters_Cosmo.RUNPARAM["num_train"]+hyper_parameters_Cosmo.RUNPARAM["num_val"]+hyper_parameters_Cosmo.RUNPARAM["num_test"]))]);
     testDataBatch32, testLabelbatch32 = tf.cast(testDataBatch64,tf.float32),tf.cast(testLabelbatch64,tf.float32)
     trainCosmo = CosmoNet(train_data=NbodySimuDataBatch32,train_label=NbodySimuLabelBatch32,val_data=valDataBatch32,val_label=valLabelbatch32,test_data=testDataBatch32,test_label=testLabelbatch32,is_train=True, is_test=True)
+
     trainCosmo.train()
     #np.savetxt("losses4.txt",losses)
     #np.savetxt("accuracy4.txt",val_accuracys)
     #np.savetxt("data_accuracy4.txt",data_accuracys)
-
-    
-    
-            

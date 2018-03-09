@@ -13,7 +13,7 @@ DATAPARAM={
         "zsSTD": [2.905168635566176411e-02,4.023372385668218254e-02]
         }
 Input = {
-        "BATCH_SIZE" : 40,              #mini-batch size for training and validation
+        "BATCH_SIZE" : 1,              #mini-batch size for training and validation
         "NUM_THREADS" : 2,              #number of threads to read data
         "CAPACITY" : 0,
         "MIN_AFTER_DEQUEUE" : 200       #the minimum number in the queue after dequeue (Min_after_dequeue and capacity together determines the shuffling of input data)
