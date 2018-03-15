@@ -14,7 +14,7 @@ DATAPARAM={
         }
 Input = {
         "BATCH_SIZE" : 1,              #mini-batch size for training and validation
-        "NUM_THREADS" : 2,              #number of threads to read data
+        "NUM_THREADS" : 8,              #number of threads to read data
         "CAPACITY" : 0,
         "MIN_AFTER_DEQUEUE" : 200       #the minimum number in the queue after dequeue (Min_after_dequeue and capacity together determines the shuffling of input data)
         }
@@ -22,8 +22,8 @@ Input = {
 Input["CAPACITY"] = Input["BATCH_SIZE"]*4 + Input["MIN_AFTER_DEQUEUE"]
 
 Input_Test = {
-	"BATCH_SIZE" : 64,              #mini-batch size for test data
-	"NUM_THREADS" : 2,              #number of threads to read data
+	"BATCH_SIZE" : 1,              #mini-batch size for test data
+	"NUM_THREADS" : 8,              #number of threads to read data
 	"CAPACITY" : 0,
 	"MIN_AFTER_DEQUEUE" : 64
 	}
@@ -38,7 +38,7 @@ Model = {
 }
 
 RUNPARAM={
-	"num_epoch": 3,              #each epoch means a fully pass over the data. The program might stop before running num_epoch (see next line).        
+	"num_epoch": 80,              #each epoch means a fully pass over the data. The program might stop before running num_epoch (see next line).        
         "require_improvement": 20,      #if with require_improvement, there is no improvement in validation error, then stop running. 
 	"num_train":400,                #total number of simulations for training
 	"num_val":50,                   #total number of simulations for validation
@@ -48,9 +48,9 @@ RUNPARAM={
         "iter_test":0                 
 }
 
-RUNPARAM["batch_per_epoch"] = 10 #RUNPARAM['num_train']*magic_number/Input['BATCH_SIZE']
-RUNPARAM["batch_per_epoch_val"] = 10 # RUNPARAM['num_val']*magic_number/Input['BATCH_SIZE']
-RUNPARAM['iter_test'] = 10 # RUNPARAM['num_test']*magic_number/Input_Test['BATCH_SIZE']
+RUNPARAM["batch_per_epoch"] = RUNPARAM['num_train']*magic_number/Input['BATCH_SIZE']
+RUNPARAM["batch_per_epoch_val"] = RUNPARAM['num_val']*magic_number/Input['BATCH_SIZE']
+RUNPARAM['iter_test'] = RUNPARAM['num_test']*magic_number/Input_Test['BATCH_SIZE']
 
 #target_dir = "new_data_2"
 #main_dir = '/data1/jamesarnemann/cosmoNet/'
@@ -61,7 +61,8 @@ RUNPARAM['iter_test'] = 10 # RUNPARAM['num_test']*magic_number/Input_Test['BATCH
 #target_dir = "orig_paper"
 #main_dir = '/lus/scratch/p02472/cosmoflow/'
 #target_dir = 'new_data_3_param_2'
-main_dir = '/global/cscratch1/sd/djbard/cosmoML/CosmoNet/'
+#main_dir = '/global/cscratch1/sd/djbard/cosmoML/CosmoNet/'
+main_dir = '/scratch/snx3000/pjm/CosmoFlow_data'
 target_dir = ''
 
 #######

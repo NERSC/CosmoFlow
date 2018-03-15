@@ -21,7 +21,7 @@ class loadNpyData:
     
     def convert_to(self):
         filename = str(self.num)+'.tfrecord'
-        print('Writing ', filename)
+        #print('Writing ', filename)
         writer = tf.python_io.TFRecordWriter(filename)
         for index in range(len(self.data)):
             data_raw = self.data[index].tostring()
@@ -83,8 +83,8 @@ def read_tfrecord(filename_queue):
     return NbodySimuAddDim,label
     
 def readDataSet(filenames):
-    print "---readDataSet-ioCosmo------"
-    print filenames
+    #print("---readDataSet-ioCosmo------")
+    #print(filenames)
     filename_queue = tf.train.string_input_producer(filenames,num_epochs=None,shuffle=True)
     NbodySimus,label= read_tfrecord(filename_queue)
     #NbodyList = [read_tfrecord(filename_queue) for _ in range(hyper_parameters_Cosmo.Input["NUM_THREADS"])]
@@ -120,14 +120,14 @@ def read_test_tfrecord(filename_queue):
     ### 0.3, 0.02853, 0.8628, 0.04887, 0.701,0.05691
     labelAddDim = (label - tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsAVG'],dtype = tf.float64))/tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsSTD']
 ,dtype = tf.float64)
-    print NbodySimuAddDim.shape
+    #print(NbodySimuAddDim.shape)
    
 
 
     return NbodySimuAddDim,labelAddDim
     
 def readTestSet(filenames):
-    print "----readTestSet-io_cosmo----"
+    #print("----readTestSet-io_cosmo----")
     filename_queue = tf.train.string_input_producer(filenames,num_epochs=None,shuffle=False)
     NbodySimus,label= read_test_tfrecord(filename_queue)
     NbodySimus_batch, label_batch = tf.train.batch(
