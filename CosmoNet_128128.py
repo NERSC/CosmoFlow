@@ -10,9 +10,6 @@ import time
 import ml_comm as mc
 import os
 
-if "cori" in os.environ['HOST']:
-  os.environ['OMP_NUM_THREADS'] = "66"
-  os.environ['KMP_AFFINITY']    = "granularity=fine,verbose,compact,1,0"
 
 #def weight_variable(shape):
 #        initial = tf.truncated_normal(shape, stddev=0.1)
@@ -210,7 +207,7 @@ class CosmoNet:
         ### taking config from the MKL benchmarks. 
         config.allow_soft_placement = True
         config.intra_op_parallelism_threads = 1 ## default
-        config.inter_op_parallelism_threads = 2 ## Default
+        config.inter_op_parallelism_threads = 1 ## Default
 
 #        os.environ['OMP_NUM_THREADS'] = '66' #####################configured it in batch script 
  
