@@ -189,20 +189,12 @@ class CosmoNet:
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
 
-    #use the CPE ML Plugin to average gradients across processes
-                optimizer      = tf.train.AdamOptimizer(hp.Model['LEARNING_RATE'])
+                #use the CPE ML Plugin to average gradients across processes
+                optimizer      = tf.train.AdamOptimizer(hp.Model['LEARNING_RATE'], beta2=0.95)
                 grads_and_vars = optimizer.compute_gradients(loss)
                 grads          = mc.gradients([gv[0] for gv in grads_and_vars], 0)
                 gs_and_vs      = [(g,v) for (_,v), g in zip(grads_and_vars, grads)]
-                def b1(gs_and_vs):
-                    t = tf.train.get_global_step() 
-                    t_op = tf.assign(t, t + 1)
-                    #t_op = tf.Print(t_op, [t_op], message="Skipping apply: ")
-                    return tf.less(t_op, 2)
-                def b2(gs_and_vs):
-                    return optimizer.apply_gradients(gs_and_vs, global_step=tf.train.get_global_step())
-                #train_step     = optimizer.apply_gradients(gs_and_vs)
-                train_step = tf.cond(tf.less(tf.train.get_or_create_global_step(), 2), lambda: b1(gs_and_vs), lambda: b2(gs_and_vs)) 
+                train_step     = optimizer.apply_gradients(gs_and_vs)
 
         lossL1Train,train_true,train_predict = self.train_loss()    
         return train_step, loss,lossL1Train,train_true,train_predict
@@ -237,7 +229,7 @@ class CosmoNet:
         hp.RUNPARAM['batch_per_epoch_val'] = int(hp.RUNPARAM['batch_per_epoch_val'] / mc.get_nranks())
         totsteps = int(hp.RUNPARAM['num_epoch'] * hp.RUNPARAM['batch_per_epoch'])
      #   mc.config_team(0, 0, totsteps, totsteps, 2, 50)
-        mc.config_team(0, 0, 1, 1000*totsteps, 2, 50)
+        mc.config_team(0, 0, 1, totsteps, 2, 50)
 
         if (mc.get_rank() == 0):
             print("+------------------------------+")
@@ -329,7 +321,7 @@ class CosmoNet:
                 coord.request_stop();
                 coord.join(threads);
 
-        if(self.is_test and mc.get_rank() == 0):
+        if(self.is_test):
                
             save_path = os.path.join(hp.Path['Model_path'], 'best_validation')
             if self.save_path != None:
@@ -344,10 +336,11 @@ class CosmoNet:
                     start_time = time.time()
                     lossL1Test_,test_true_,test_predict_ = sess.run([lossL1Test,test_true,test_predict])
                     loss_test.append(lossL1Test_)  
-                    print("Box {} took {:.3f}s".format(i, time.time() - start_time))
-                    print("  test loss: %.3f"%lossL1Test_)
-                    np.savetxt(os.path.join(hp.Path['test_result'],'test_batch_'+str(i)+'.txt'),np.c_[test_true_,test_predict_])
-                    np.savetxt(os.path.join(hp.Path['test_result'],'loss_test.txt'),loss_test)
+                    if (mc.get_rank() == 0):
+                        print("Box {} took {:.3f}s".format(i, time.time() - start_time))
+                        print("  test loss: %.3f"%lossL1Test_)
+                        np.savetxt(os.path.join(hp.Path['test_result'],'test_batch_'+str(i)+'.txt'),np.c_[test_true_,test_predict_])
+                        np.savetxt(os.path.join(hp.Path['test_result'],'loss_test.txt'),loss_test)
                 coord.request_stop()
                 coord.join(threads)
 
