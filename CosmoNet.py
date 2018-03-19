@@ -25,8 +25,8 @@ if "cori" in os.environ['HOST']:
 zscored_average = hp.DATAPARAM['zsAVG']
 zscored_std = hp.DATAPARAM['zsSTD']
 
-model_save_interval   = 20 #every 20 epochs
-loss_average_interval = 5  #every 5 epochs
+model_save_interval   = 10 #every 20 epochs
+loss_average_interval = 1  #every 5 epochs
 verbose               = 0  #print out model info
 extra_timers          = 1  #extra perf timers
 
@@ -290,7 +290,7 @@ class CosmoNet:
                         samps_per_sec_inst = mc.get_nranks() * hp.Input['BATCH_SIZE'] / (step_finish_time-step_start_time)
                         if (mc.get_rank() == 0):
                             print("Train Step: " + str(i) + ", Samples/Sec = " + str(samps_per_sec) + ", Samples/Sec(inst) = " + str(samps_per_sec_inst) + ", Loss = " + str(lossTrain))
-                            loss_per_epoch_train +=lossL1Train_
+                        loss_per_epoch_train +=lossL1Train_
 
                     if (mc.get_rank() == 0 and extra_timers == 1):
                         print("Training in Epoch {} took {:.3f}s".format(epoch, time.time() - start_time))
