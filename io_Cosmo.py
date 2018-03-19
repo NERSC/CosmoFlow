@@ -56,9 +56,10 @@ def read_tfrecord(filename_queue):
         "label_raw": tf.FixedLenFeature([],tf.string)
     }
     )
-    
-    NbodySimuDecode = tf.decode_raw(parsed_example['data_raw'],tf.float64)
-    labelDecode = tf.decode_raw(parsed_example['label_raw'],tf.float64)
+
+    NbodySimuDecode = tf.decode_raw(parsed_example['data_raw'],tf.float32)
+    labelDecode = tf.decode_raw(parsed_example['label_raw'],tf.float32)
+
     NbodySimus = tf.reshape(NbodySimuDecode,[128,128,128])
  
     #normalize
@@ -67,8 +68,8 @@ def read_tfrecord(filename_queue):
     label = tf.reshape(labelDecode,[hyper_parameters_Cosmo.DATAPARAM["output_dim"] ])
 
 
-    label = (label - tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsAVG'],dtype = tf.float64))/tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsSTD']
-,dtype = tf.float64)
+    label = (label - tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsAVG'],dtype = tf.float32))/tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsSTD']
+                                                                                                            ,dtype = tf.float32)
     return NbodySimuAddDim,label
     
 def readDataSet(filenames):
@@ -100,16 +101,16 @@ def read_test_tfrecord(filename_queue):
     }
     )
 
-    NbodySimuDecode = tf.decode_raw(parsed_example['data_raw'],tf.float64)
-    labelDecode = tf.decode_raw(parsed_example['label_raw'],tf.float64)
+    NbodySimuDecode = tf.decode_raw(parsed_example['data_raw'],tf.float32)
+    labelDecode = tf.decode_raw(parsed_example['label_raw'],tf.float32)
     NbodySimus = tf.reshape(NbodySimuDecode,[128,128,128])
     NbodySimus /= (tf.reduce_sum(NbodySimus)/128**3+0.)
     NbodySimuAddDim = tf.expand_dims(NbodySimus,3)
     label = tf.reshape(labelDecode,[2])
     label = tf.reshape(labelDecode,[hyper_parameters_Cosmo.DATAPARAM["output_dim"] ])
     
-    labelAddDim = (label - tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsAVG'],dtype = tf.float64))/tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsSTD']
-,dtype = tf.float64)
+    labelAddDim = (label - tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsAVG'],dtype = tf.float32))/tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsSTD']
+                                                                                                                  ,dtype = tf.float32)
 
     print NbodySimuAddDim.shape
    
