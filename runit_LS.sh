@@ -7,7 +7,7 @@
 #SBATCH --partition=regular
 #SBATCH -C knl,quad,cache
 #SBATCH --exclusive
-#SBATCH -q premium
+####SBATCH -q premium
 module load /global/cscratch1/sd/djbard/cosmoML/module/March12
 
 unset OMP_NUM_THREADS
