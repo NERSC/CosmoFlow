@@ -25,12 +25,12 @@ if "cori" in os.environ['HOST']:
 zscored_average = hp.DATAPARAM['zsAVG']
 zscored_std = hp.DATAPARAM['zsSTD']
 
-model_save_interval   = 20 #every 20 epochs
-loss_average_interval = 5  #every 5 epochs
+model_save_interval   = 1 #every 20 epochs
+loss_average_interval = 1  #every 5 epochs
 verbose               = 0  #print out model info
 extra_timers          = 1  #extra perf timers
 
-cpe_plugin_pipeline_enabled = 1  #set to 1 to enable high performance comm pipeline
+cpe_plugin_pipeline_enabled = 0  #set to 1 to enable high performance comm pipeline
 cpe_plugin_comm_threads     = 2
 
 def weight_variable(shape,name):
@@ -271,7 +271,7 @@ class CosmoNet:
                 sess.run(bcast)
 
                 coord = tf.train.Coordinator()
-                threads = tf.train.start_queue_runners(coord=coord)
+                threads = tf.train.start_queue_runners(sess=sess, coord=coord)
                 
                 elapsed_time = 0.
                 for epoch in range(hp.RUNPARAM['num_epoch']):
@@ -290,7 +290,7 @@ class CosmoNet:
                         samps_per_sec_inst = mc.get_nranks() * hp.Input['BATCH_SIZE'] / (step_finish_time-step_start_time)
                         if (mc.get_rank() == 0):
                             print("Train Step: " + str(i) + ", Samples/Sec = " + str(samps_per_sec) + ", Samples/Sec(inst) = " + str(samps_per_sec_inst) + ", Loss = " + str(lossTrain))
-                            loss_per_epoch_train +=lossL1Train_
+                        loss_per_epoch_train +=lossL1Train_
 
                     if (mc.get_rank() == 0 and extra_timers == 1):
                         print("Training in Epoch {} took {:.3f}s".format(epoch, time.time() - start_time))
@@ -309,10 +309,10 @@ class CosmoNet:
                     for i in range(hp.RUNPARAM['batch_per_epoch_val']):
                         if (mc.get_rank() == 0):
                             print("Val Step = " + str(i))
-                            loss_,val_true_,val_predict_ = sess.run([lossL1Val,val_true,val_predict])
-                            loss_per_epoch_val += loss_
-                    if (mc.get_rank() == 0 and extra_timers == 1):
-                        print("validation in Epoch {} took {:.3f}s".format(epoch, time.time() - val_start_time))
+                        loss_,val_true_,val_predict_ = sess.run([lossL1Val,val_true,val_predict])
+                        loss_per_epoch_val += loss_
+                        if (mc.get_rank() == 0 and extra_timers == 1):
+                            print("validation in Epoch {} took {:.3f}s".format(epoch, time.time() - val_start_time))
                         
                     average_start_time=time.time()
                     if (epoch % loss_average_interval == 0):
@@ -320,8 +320,8 @@ class CosmoNet:
                         mc.average(global_loss)
                         loss_per_epoch_val = global_loss / hp.RUNPARAM['batch_per_epoch_val']
                         losses_val.append(loss_per_epoch_val)
-                    if (mc.get_rank() == 0 and extra_timers == 1):
-                        print("validation loss averaging in Epoch {} took {:.3f}s".format(epoch, time.time() - average_start_time))
+                        if (mc.get_rank() == 0 and extra_timers == 1):
+                            print("validation loss averaging in Epoch {} took {:.3f}s".format(epoch, time.time() - average_start_time))
 
                     save_start_time=time.time()
                     if (epoch % model_save_interval == 0) and (loss_per_epoch_val < best_validation_accuracy):
@@ -347,18 +347,25 @@ class CosmoNet:
                         mc.finalize()
                         break
                 
-            coord.request_stop()
-            coord.join(threads)
+                coord.request_stop()
+                coord.join(threads)
 
         if(self.is_test):
             save_path = os.path.join(hp.Path['Model_path'], 'best_validation')
             if self.save_path != None:
                 save_path = self.save_path
 
-            with tf.Session() as sess:
+            config = tf.ConfigProto()
+
+            ### taking config from the MKL benchmarks.
+            config.allow_soft_placement = True
+            config.intra_op_parallelism_threads = 1 ## for March12 wheel
+            config.inter_op_parallelism_threads = 1 ## for March12 wheel
+
+            with tf.Session(config=config) as sess:
                 saver.restore(sess=sess,save_path=save_path)
                 coord = tf.train.Coordinator()
-                threads = tf.train.start_queue_runners(coord=coord)
+                threads = tf.train.start_queue_runners(sess=sess, coord=coord)
                 loss_test = []
                 for i in range(0,int(hp.RUNPARAM['iter_test'])):
                     start_time = time.time()

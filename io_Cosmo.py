@@ -118,6 +118,7 @@ def read_test_tfrecord(filename_queue):
     
 def readTestSet(filenames):
     #print "----readTestSet-io_cosmo----"
+    #print(filenames)
     filename_queue = tf.train.string_input_producer(filenames,num_epochs=None,shuffle=False)
     NbodySimus,label= read_test_tfrecord(filename_queue)
     NbodySimus_batch, label_batch = tf.train.batch(

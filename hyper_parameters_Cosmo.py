@@ -24,10 +24,10 @@ Input = {
 Input["CAPACITY"] = Input["BATCH_SIZE"]*4 + Input["MIN_AFTER_DEQUEUE"]
 
 Input_Test = {
-	"BATCH_SIZE" : 64,              #mini-batch size for test data
+	"BATCH_SIZE" : 1,              #mini-batch size for test data
 	"NUM_THREADS" : 2,              #number of threads to read data
 	"CAPACITY" : 0,
-	"MIN_AFTER_DEQUEUE" : 32
+	"MIN_AFTER_DEQUEUE" : 64
 	}
 
 Input_Test["CAPACITY"] = Input_Test["BATCH_SIZE"]*4 + Input_Test["MIN_AFTER_DEQUEUE"]
@@ -40,7 +40,7 @@ Model = {
 }
 
 RUNPARAM={
-	"num_epoch": 80,              #each epoch means a fully pass over the data. The program might stop before running num_epoch (see next line).        
+	"num_epoch": 10,              #each epoch means a fully pass over the data. The program might stop before running num_epoch (see next line).        
         "require_improvement": 50,      #if with require_improvement, there is no improvement in validation error, then stop running. 
 	"num_train":400,                #total number of simulations for training
 	"num_val":50,                   #total number of simulations for validation
@@ -58,8 +58,8 @@ RUNPARAM['iter_test'] = RUNPARAM['num_test']*magic_number/Input_Test['BATCH_SIZE
 ##### CHANGE THIS TO LOCAL DIRECTORY
 
 ## data on scratch
-main_dir = "/global/cscratch1/sd/djbard/cosmoML/data-March20Runs/"
-target_dir = "./" #"orig_paper"
+main_dir = "/global/cscratch1/sd/djbard/cosmoML/data-March20Runs/500/"
+target_dir = "" #"orig_paper"
 
 ## BB dir
 #main_dir = someVariable = (os.environ['DW_PERSISTENT_STRIPED_CosmoFlow'])
