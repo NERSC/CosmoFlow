@@ -1,14 +1,16 @@
 #!/bin/bash
 #SBATCH --job-name=Cosmo_job
 #SBATCH --time=04:00:00
-#SBATCH --nodes=64
+#SBATCH --nodes=160
 #SBATCH --ntasks-per-node=1
 #SBATCH -L SCRATCH
 #SBATCH --partition=regular
 #SBATCH -C knl,quad,cache
 #SBATCH --exclusive
+#####SBATCH -q premium
+#SBATCH -A dasrepo
 
-module load /global/cscratch1/sd/djbard/cosmoML/module/March12
+module load /global/cscratch1/sd/djbard/cosmoML/module/March12-newCray
 
 unset OMP_NUM_THREADS
 export KMP_AFFINITY=compact,norespect

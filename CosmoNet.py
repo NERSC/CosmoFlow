@@ -25,7 +25,7 @@ if "cori" in os.environ['HOST']:
 zscored_average = hp.DATAPARAM['zsAVG']
 zscored_std = hp.DATAPARAM['zsSTD']
 
-model_save_interval   = 1 #every 20 epochs
+model_save_interval   = 10 #every 20 epochs
 loss_average_interval = 1  #every 5 epochs
 verbose               = 0  #print out model info
 extra_timers          = 1  #extra perf timers
