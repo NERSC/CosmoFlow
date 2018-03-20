@@ -1,0 +1,239 @@
+Traceback (most recent call last):
+  File "CosmoNet.py", line 10, in <module>
+Traceback (most recent call last):
+  File "CosmoNet.py", line 10, in <module>
+    import ml_comm as mc
+Traceback (most recent call last):
+  File "CosmoNet.py", line 10, in <module>
+    import ml_comm as mc
+Traceback (most recent call last):
+  File "CosmoNet.py", line 10, in <module>
+ImportError:     import ml_comm as mc
+ImportError: No module named ml_comm
+    import ml_comm as mc
+No module named ml_comm
+ImportError: No module named ml_commImportError: 
+No module named ml_comm
+Traceback (most recent call last):
+  File "CosmoNet.py", line 10, in <module>
+Traceback (most recent call last):
+  File "CosmoNet.py", line 10, in <module>
+    import ml_comm as mc
+    import ml_comm as mc
+ImportError: ImportError: No module named ml_commTraceback (most recent call last):
+  File "CosmoNet.py", line 10, in <module>
+No module named ml_comm
+
+    import ml_comm as mc
+ImportError: No module named ml_comm
+Traceback (most recent call last):
+  File "CosmoNet.py", line 10, in <module>
+    import ml_comm as mc
+ImportError: No module named ml_comm
+Traceback (most recent call last):
+  File "CosmoNet.py", line 10, in <module>
+    import ml_comm as mc
+ImportError: No module named ml_comm
+Traceback (most recent call last):
+  File "CosmoNet.py", line 10, in <module>
+    import ml_comm as mc
+ImportError: No module named ml_comm
+Traceback (most recent call last):
+  File "CosmoNet.py", line 10, in <module>
+    import ml_comm as mc
+ImportError: No module named ml_comm
+Traceback (most recent call last):
+  File "CosmoNet.py", line 10, in <module>
+    import ml_comm as mc
+ImportError: No module named ml_comm
+Traceback (most recent call last):
+  File "CosmoNet.py", line 10, in <module>
+    import ml_comm as mc
+ImportError: No module named ml_comm
+Traceback (most recent call last):
+  File "CosmoNet.py", line 10, in <module>
+    import ml_comm as mc
+ImportError: No module named ml_comm
+Traceback (most recent call last):
+  File "CosmoNet.py", line 10, in <module>
+    import ml_comm as mc
+ImportError: No module named ml_comm
+Traceback (most recent call last):
+  File "CosmoNet.py", line 10, in <module>
+    import ml_comm as mc
+ImportError: No module named ml_comm
+Traceback (most recent call last):
+  File "CosmoNet.py", line 10, in <module>
+    import ml_comm as mc
+ImportError: No module named ml_comm
+Traceback (most recent call last):
+  File "CosmoNet.py", line 10, in <module>
+    import ml_comm as mc
+ImportError: No module named ml_comm
+Traceback (most recent call last):
+  File "CosmoNet.py", line 10, in <module>
+    import ml_comm as mc
+ImportError: No module named ml_comm
+srun: error: nid11613: task 9: Exited with exit code 1
+srun: Terminating job step 11090667.0
+srun: error: nid11669: task 61: Exited with exit code 1
+slurmstepd: error: *** STEP 11090667.0 ON nid11550 CANCELLED AT 2018-03-20T11:29:21 ***
+srun: error: nid11645: task 41: Exited with exit code 1
+srun: error: nid11733: task 121: Exited with exit code 1
+srun: error: nid11773: task 157: Exited with exit code 1
+srun: error: nid11709: task 101: Exited with exit code 1
+srun: error: nid11765: task 149: Exited with exit code 1
+srun: error: nid11677: task 69: Exited with exit code 1
+srun: error: nid11699: task 91: Exited with exit code 1
+srun: error: nid11637: task 33: Exited with exit code 1
+srun: error: nid11701: task 93: Exited with exit code 1
+srun: error: nid11635: task 31: Exited with exit code 1
+srun: error: nid11636: task 32: Exited with exit code 1
+srun: error: nid11652: task 48: Terminated
+srun: error: nid11672: task 64: Terminated
+srun: error: nid11749: task 133: Terminated
+srun: error: nid11654: task 50: Terminated
+srun: error: nid11639: task 35: Terminated
+srun: error: nid11640: task 36: Terminated
+srun: error: nid11642: task 38: Terminated
+srun: error: nid11751: task 135: Terminated
+srun: error: nid11748: task 132: Terminated
+srun: error: nid11673: task 65: Terminated
+srun: error: nid11662: task 58: Terminated
+srun: error: nid11651: task 47: Terminated
+srun: error: nid11656: task 52: Terminated
+srun: error: nid11649: task 45: Terminated
+srun: error: nid11622: task 18: Terminated
+srun: error: nid11611: task 7: Terminated
+srun: error: nid11700: task 92: Exited with exit code 1
+srun: error: nid11621: task 17: Terminated
+srun: error: nid11674: task 66: Terminated
+srun: error: nid11735: task 123: Terminated
+srun: error: nid11628: task 24: Terminated
+srun: error: nid11681: task 73: Terminated
+srun: error: nid11738: task 126: Terminated
+srun: error: nid11627: task 23: Terminated
+srun: error: nid11692: task 84: Terminated
+srun: error: nid11641: task 37: Terminated
+srun: error: nid11670: task 62: Terminated
+srun: error: nid11715: task 107: Terminated
+srun: error: nid11632: task 28: Terminated
+srun: error: nid11653: task 49: Terminated
+srun: error: nid11690: task 82: Terminated
+srun: error: nid11763: task 147: Exited with exit code 1
+srun: error: nid11716: task 108: Terminated
+srun: error: nid11633: task 29: Terminated
+srun: error: nid11650: task 46: Terminated
+srun: error: nid11643: task 39: Terminated
+srun: error: nid11624: task 20: Terminated
+srun: error: nid11769: task 153: Terminated
+srun: error: nid11646: task 42: Terminated
+srun: error: nid11615: task 11: Terminated
+srun: error: nid11668: task 60: Terminated
+srun: error: nid11717: task 109: Terminated
+srun: error: nid11686: task 78: Terminated
+srun: error: nid11631: task 27: Terminated
+srun: error: nid11676: task 68: Terminated
+srun: error: nid11617: task 13: Terminated
+srun: error: nid11694: task 86: Terminated
+srun: error: nid11619: task 15: Terminated
+srun: error: nid11660: task 56: Terminated
+srun: error: nid11721: task 113: Terminated
+srun: error: nid11718: task 110: Terminated
+srun: error: nid11663: task 59: Terminated
+srun: error: nid11684: task 76: Terminated
+srun: error: nid11661: task 57: Terminated
+srun: error: nid11618: task 14: Terminated
+srun: error: nid11675: task 67: Terminated
+srun: error: nid11620: task 16: Terminated
+srun: error: nid11629: task 25: Terminated
+srun: error: nid11744: task 130: Terminated
+srun: error: nid11747: task 131: Terminated
+srun: error: nid11720: task 112: Terminated
+srun: error: nid11737: task 125: Terminated
+srun: error: nid11750: task 134: Terminated
+srun: error: nid11679: task 71: Terminated
+srun: error: nid11612: task 8: Terminated
+srun: error: nid11625: task 21: Terminated
+srun: error: nid11714: task 106: Terminated
+srun: error: nid11731: task 119: Terminated
+srun: error: nid11764: task 148: Terminated
+srun: error: nid11685: task 77: Terminated
+srun: error: nid11762: task 146: Terminated
+srun: error: nid11659: task 55: Terminated
+srun: error: nid11648: task 44: Terminated
+srun: error: nid11657: task 53: Terminated
+srun: error: nid11682: task 74: Terminated
+srun: error: nid11607: task 3: Terminated
+srun: error: nid11688: task 80: Terminated
+srun: error: nid11713: task 105: Terminated
+srun: error: nid11634: task 30: Terminated
+srun: error: nid11647: task 43: Terminated
+srun: error: nid11752: task 136: Terminated
+srun: error: nid11761: task 145: Terminated
+srun: error: nid11758: task 142: Terminated
+srun: error: nid11723: task 115: Terminated
+srun: error: nid11608: task 4: Terminated
+srun: error: nid11705: task 97: Terminated
+srun: error: nid11678: task 70: Terminated
+srun: error: nid11771: task 155: Terminated
+srun: error: nid11704: task 96: Terminated
+srun: error: nid11697: task 89: Terminated
+srun: error: nid11658: task 54: Terminated
+srun: error: nid11739: task 127: Terminated
+srun: error: nid11736: task 124: Terminated
+srun: error: nid11689: task 81: Terminated
+srun: error: nid11630: task 26: Terminated
+srun: error: nid11691: task 83: Terminated
+srun: error: nid11616: task 12: Terminated
+srun: error: nid11609: task 5: Terminated
+srun: error: nid11626: task 22: Terminated
+srun: error: nid11767: task 151: Terminated
+srun: error: nid11696: task 88: Terminated
+srun: error: nid11753: task 137: Terminated
+srun: error: nid11710: task 102: Terminated
+srun: error: nid11707: task 99: Terminated
+srun: error: nid11712: task 104: Terminated
+srun: error: nid11743: task 129: Terminated
+srun: error: nid11754: task 138: Terminated
+srun: error: nid11655: task 51: Terminated
+srun: error: nid11742: task 128: Terminated
+srun: error: nid11577: task 1: Terminated
+srun: error: nid11610: task 6: Terminated
+srun: error: nid11671: task 63: Terminated
+srun: error: nid11760: task 144: Terminated
+srun: error: nid11729: task 117: Terminated
+srun: error: nid11706: task 98: Terminated
+srun: error: nid11755: task 139: Terminated
+srun: error: nid11756: task 140: Terminated
+srun: error: nid11693: task 85: Terminated
+srun: error: nid11614: task 10: Terminated
+srun: error: nid11683: task 75: Terminated
+srun: error: nid11728: task 116: Terminated
+srun: error: nid11757: task 141: Terminated
+srun: error: nid11722: task 114: Terminated
+srun: error: nid11719: task 111: Terminated
+srun: error: nid11732: task 120: Terminated
+srun: error: nid11730: task 118: Terminated
+srun: error: nid11759: task 143: Terminated
+srun: error: nid11644: task 40: Terminated
+srun: error: nid11770: task 154: Terminated
+srun: error: nid11775: task 159: Terminated
+srun: error: nid11772: task 156: Terminated
+srun: error: nid11774: task 158: Terminated
+srun: error: nid11695: task 87: Terminated
+srun: error: nid11680: task 72: Terminated
+srun: error: nid11734: task 122: Terminated
+srun: error: nid11703: task 95: Terminated
+srun: error: nid11708: task 100: Terminated
+srun: error: nid11638: task 34: Terminated
+srun: error: nid11623: task 19: Terminated
+srun: error: nid11768: task 152: Terminated
+srun: error: nid11698: task 90: Terminated
+srun: error: nid11687: task 79: Terminated
+srun: error: nid11766: task 150: Terminated
+srun: error: nid11711: task 103: Terminated
+srun: error: nid11702: task 94: Terminated
+srun: error: nid11578: task 2: Terminated
+srun: error: nid11550: task 0: Terminated
+srun: Force Terminated job step 11090667.0
