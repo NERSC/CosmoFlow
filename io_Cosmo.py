@@ -21,7 +21,7 @@ class loadNpyData:
     
     def convert_to(self):
         filename = str(self.num)+'.tfrecord'
-        #print('Writing ', filename)
+        print('Writing ', filename)
         writer = tf.python_io.TFRecordWriter(filename)
         for index in range(len(self.data)):
             data_raw = self.data[index].tostring()
@@ -73,8 +73,8 @@ def read_tfrecord(filename_queue):
     return NbodySimuAddDim,label
     
 def readDataSet(filenames):
-    #print "---readDataSet-ioCosmo------"
-    #print filenames
+    print "---readDataSet-ioCosmo------"
+    print filenames
     filename_queue = tf.train.string_input_producer(filenames,num_epochs=None,shuffle=True)
     NbodySimus,label= read_tfrecord(filename_queue)
 
@@ -106,18 +106,18 @@ def read_test_tfrecord(filename_queue):
     NbodySimus = tf.reshape(NbodySimuDecode,[128,128,128])
     NbodySimus /= (tf.reduce_sum(NbodySimus)/128**3+0.)
     NbodySimuAddDim = tf.expand_dims(NbodySimus,3)
-    label = tf.reshape(labelDecode,[2])
+    #label = tf.reshape(labelDecode,[2])
     label = tf.reshape(labelDecode,[hyper_parameters_Cosmo.DATAPARAM["output_dim"] ])
     
     labelAddDim = (label - tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsAVG'],dtype = tf.float32))/tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsSTD']
                                                                                                                   ,dtype = tf.float32)
 
-    #print NbodySimuAddDim.shape
+    print NbodySimuAddDim.shape
    
     return NbodySimuAddDim,labelAddDim
     
 def readTestSet(filenames):
-    #print "----readTestSet-io_cosmo----"
+    print "----readTestSet-io_cosmo----"
     filename_queue = tf.train.string_input_producer(filenames,num_epochs=None,shuffle=False)
     NbodySimus,label= read_test_tfrecord(filename_queue)
     NbodySimus_batch, label_batch = tf.train.batch(
@@ -137,9 +137,10 @@ if __name__ == '__main__':
 
     
     
-    label_path = os.path.join('/global/cscratch1/sd/djbard/MUSIC_pyCola/egpbos-pycola-672c58551ff1/OmSi/twothousand/','list-2000-noCiC-128from256.txt')
+    label_path = os.path.join('/global/cscratch1/sd/djbard/MUSIC_pyCola/egpbos-pycola-672c58551ff1/OmSiNs/twothousand/','list-500-noCiC-128from256.txt')
     labels = np.loadtxt(label_path,delimiter=',')    
        
+    
     ### How many tensorflow files do we want to make? 
     ### Assuming 500 here, with teh first 400 a raondom mix, 
     ### and the last 100 NOT mixed for val/test sets. 
@@ -148,18 +149,20 @@ if __name__ == '__main__':
         label = []
         for j in range(64):
             if i<400:
-              numDirectory = random.randrange(1000,2900) ###
+              numDirectory = random.randrange(1000,1400) ###
             else:
-              numDirectory = (i-400)+1900 ## don't want this to be random!!
+              numDirectory = (i)+1000 ## don't want this to be random!!
             numFile = random.randrange(8)
             dirname = numDirectory
 
+            #print i, j, numDirectory
             ## pull a sub-volumes from the 2000 dir
-            data_path = os.path.join('/global/cscratch1/sd/djbard/MUSIC_pyCola/egpbos-pycola-672c58551ff1/OmSi/twothousand/128from256-2000/',str(dirname).rjust(3,'0'),str(numFile)+'.npy')
-            
+            data_path = os.path.join('/global/cscratch1/sd/djbard/MUSIC_pyCola/egpbos-pycola-672c58551ff1/OmSiNs/twothousand/128from256-500/',str(dirname).rjust(3,'0'),str(numFile)+'.npy')
+            #print data_path
             data = np.append(data,np.load(data_path))
-            label = np.append(label,labels[ (numDirectory-1000)][[1,3]])
+            label = np.append(label,labels[ (numDirectory-1000)][[1,2,3]])
             
-        loadNpyData(data.reshape(-1,128,128,128,1),label.reshape(-1,2),i).convert_to()
+
+        loadNpyData(data.reshape(-1,128,128,128,1),label.reshape(-1,3),i).convert_to()
     
    

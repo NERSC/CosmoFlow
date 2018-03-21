@@ -3,15 +3,15 @@ import os
 magic_number = 64
 
 DATAPARAM={
-        "output_dim" : 2,
+        "output_dim" : 3,
 	#Ns
-        #"zsAVG" : [0.3, 0.8628, 0.95],
-        #"zsSTD" : [0.02853, 0.04887, 0.028]
+        "zsAVG" : [0.3, 0.8628, 0.95],
+        "zsSTD" : [0.02853, 0.04887, 0.028]
 	#H0
         #"zsAVG" : [0.3, 0.8628, 0.701],
         #"zsSTD" : [0.02853, 0.04887, 0.05691]
-        "zsAVG": [2.995679839999998983e-01,8.610806619999996636e-01],
-        "zsSTD": [2.905168635566176411e-02,4.023372385668218254e-02]
+        #"zsAVG": [2.995679839999998983e-01,8.610806619999996636e-01],
+        #"zsSTD": [2.905168635566176411e-02,4.023372385668218254e-02]
         }
 
 Input = {
@@ -24,10 +24,10 @@ Input = {
 Input["CAPACITY"] = Input["BATCH_SIZE"]*4 + Input["MIN_AFTER_DEQUEUE"]
 
 Input_Test = {
-	"BATCH_SIZE" : 64,              #mini-batch size for test data
+	"BATCH_SIZE" : 1,              #mini-batch size for test data
 	"NUM_THREADS" : 2,              #number of threads to read data
 	"CAPACITY" : 0,
-	"MIN_AFTER_DEQUEUE" : 32
+	"MIN_AFTER_DEQUEUE" : 64
 	}
 
 Input_Test["CAPACITY"] = Input_Test["BATCH_SIZE"]*4 + Input_Test["MIN_AFTER_DEQUEUE"]
@@ -59,7 +59,8 @@ RUNPARAM['iter_test'] = RUNPARAM['num_test']*magic_number/Input_Test['BATCH_SIZE
 
 ## data on scratch
 main_dir = "/global/cscratch1/sd/djbard/cosmoML/data-March20Runs/"
-target_dir = "./" #"orig_paper"
+target_dir = "500/" #"orig_paper"
+
 
 ## BB dir
 #main_dir = someVariable = (os.environ['DW_PERSISTENT_STRIPED_CosmoFlow'])
