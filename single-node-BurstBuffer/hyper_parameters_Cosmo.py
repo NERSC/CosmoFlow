@@ -67,14 +67,14 @@ RUNPARAM['iter_test'] = RUNPARAM['num_test']*magic_number/Input_Test['BATCH_SIZE
 
 
 ## LARGE data on scratch
-main_dir = "/global/cscratch1/sd/pjm/cosmoML_data/"
-target_dir = "5000" 
+#main_dir = "/global/cscratch1/sd/pjm/cosmoML_data/"
+#target_dir = "5000" 
 
 
 
 ## BB dir
-#main_dir = someVariable = (os.environ['DW_PERSISTENT_STRIPED_CosmoFlowMarch20th'])
-#target_dir = "."
+main_dir = someVariable = (os.environ['DW_PERSISTENT_STRIPED_CosmoFlow'])
+target_dir = "/5000"
 
 Path={
 

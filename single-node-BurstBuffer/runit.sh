@@ -1,15 +1,15 @@
 #!/bin/bash
 #SBATCH --job-name=Cosmo_job
-#SBATCH --time=01:00:00
+#SBATCH --time=00:20:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH -L SCRATCH
 #SBATCH -C knl,quad,cache
 #SBATCH --exclusive
-#SBATCH --reservation=CosmoFlow2_knl
-###SBATCH -p special
+###SBATCH --reservation=CosmoFlow2_knl
+#SBATCH -p debug
 #SBATCH -A dasrepo
-###DW persistentdw name=CosmoFlowMarch20th
+#DW persistentdw name=CosmoFlow
 
 
 module load /global/cscratch1/sd/djbard/cosmoML/module/March19-newCray-global
