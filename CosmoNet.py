@@ -251,6 +251,10 @@ class CosmoNet:
             print("| # Ranks = {:5d}              |".format(mc.get_nranks()))
             print("| Global Batch = {:6d}        |".format(mc.get_nranks() * hp.Input['BATCH_SIZE']))
             print("| # Parameters = {:9d}     |".format(totsize))
+            if (cpe_plugin_pipeline_enabled == 1):
+                print("| CPE Plugin Pipeline Enabled   |")
+            else:
+                print("| CPE Plugin Pipeline Disabled  |")
             print("+------------------------------+") 
  
         #use the CPE ML Plugin to broadcast initial model parameter values
@@ -273,11 +277,11 @@ class CosmoNet:
                 coord = tf.train.Coordinator()
                 threads = tf.train.start_queue_runners(sess=sess, coord=coord)
                 
-                elapsed_time = 0.
                 for epoch in range(hp.RUNPARAM['num_epoch']):
                     save_path = os.path.join(hp.Path['Model_path'], 'best_validation')
                     total_iterations += 1
                     start_time = time.time()
+                    elapsed_time = 0.
                     loss_per_epoch_val = 0
                     loss_per_epoch_train = 0
                     for i in range(hp.RUNPARAM['batch_per_epoch']):  
@@ -286,14 +290,14 @@ class CosmoNet:
                         step_finish_time = time.time()
                         
                         elapsed_time += (step_finish_time-step_start_time)
-                        samps_per_sec = mc.get_nranks() * (epoch * hp.RUNPARAM['batch_per_epoch'] * hp.Input['BATCH_SIZE'] + (i+1) * hp.Input['BATCH_SIZE']) / elapsed_time
+                        samps_per_sec = mc.get_nranks() * ((i+1) * hp.Input['BATCH_SIZE']) / elapsed_time
                         samps_per_sec_inst = mc.get_nranks() * hp.Input['BATCH_SIZE'] / (step_finish_time-step_start_time)
                         if (mc.get_rank() == 0):
                             print("Train Step: " + str(i) + ", Samples/Sec = " + str(samps_per_sec) + ", Samples/Sec(inst) = " + str(samps_per_sec_inst) + ", Loss = " + str(lossTrain))
                         loss_per_epoch_train +=lossL1Train_
 
                     if (mc.get_rank() == 0 and extra_timers == 1):
-                        print("Training in Epoch {} took {:.3f}s".format(epoch, time.time() - start_time))
+                        print("Training in Epoch {} took {:.3f}s (Avg Samples/Sec = {})".format(epoch, time.time() - start_time),str(samps_per_sec))
 
                     average_start_time=time.time()
                     if (epoch % loss_average_interval == 0):
@@ -311,8 +315,8 @@ class CosmoNet:
                             print("Val Step = " + str(i))
                         loss_,val_true_,val_predict_ = sess.run([lossL1Val,val_true,val_predict])
                         loss_per_epoch_val += loss_
-                        if (mc.get_rank() == 0 and extra_timers == 1):
-                            print("validation in Epoch {} took {:.3f}s".format(epoch, time.time() - val_start_time))
+                    if (mc.get_rank() == 0 and extra_timers == 1):
+                        print("validation in Epoch {} took {:.3f}s".format(epoch, time.time() - val_start_time))
                         
                     average_start_time=time.time()
                     if (epoch % loss_average_interval == 0):
