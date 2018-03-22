@@ -1,0 +1,16 @@
+Directory naming rules for this data gathered on Daint:
+
+CosmoFlow_small_512nodes_10epochs_0
+
+is:
+
+small dataset
+
+512 nodes
+
+run for 10 epochs
+
+_0 at the end means with the plugin pipeline disabled.
+
+
+On Daint we used TF r1.5 with Cuda 8, cuDNN 7.
