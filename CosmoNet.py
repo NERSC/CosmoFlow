@@ -246,8 +246,10 @@ class CosmoNet:
 
         #correct the Adam parameters based on the number of ranks, which accounts for effective batch size
         #base values determine at 128 ranks (batch size = 1 per rank)
-        beta1 = pow(beta1, mc.get_nranks()/128.0)
-        beta2 = pow(beta2, mc.get_nranks()/128.0)
+        scale = (hp.Input['BATCH_SIZE'] * mc.get_nranks())/128.0
+        beta1 = pow(beta1, scale)
+        beta2 = pow(beta2, scale)
+        print(str(beta1) + " "  + str(beta2))
 
         train_step, loss, lossL1Train,train_true,train_predict = self.optimize(beta1, beta2)
         lossL1Val,val_true,val_predict = self.validation_loss()
@@ -260,9 +262,9 @@ class CosmoNet:
             print("| Global Batch = {:6d}        |".format(mc.get_nranks() * hp.Input['BATCH_SIZE']))
             print("| # Parameters = {:9d}     |".format(totsize))
             if (cpe_plugin_pipeline_enabled == 1):
-                print("| CPE Plugin Pipeline Enabled   |")
+                print("| CPE Plugin Pipeline Enabled  |")
             else:
-                print("| CPE Plugin Pipeline Disabled  |")
+                print("| CPE Plugin Pipeline Disabled |")
             print("+------------------------------+") 
  
         #use the CPE ML Plugin to broadcast initial model parameter values
@@ -305,7 +307,7 @@ class CosmoNet:
                         loss_per_epoch_train +=lossL1Train_
 
                     if (mc.get_rank() == 0 and extra_timers == 1):
-                        print("Training in Epoch {} took {:.3f}s (Avg Samples/Sec = {})".format(epoch, time.time() - start_time),str(samps_per_sec))
+                        print("Training in Epoch {} took {:.3f}s (Avg Samples/Sec = {})".format(epoch, time.time() - start_time, samps_per_sec))
 
                     average_start_time=time.time()
                     if (epoch % loss_average_interval == 0):
