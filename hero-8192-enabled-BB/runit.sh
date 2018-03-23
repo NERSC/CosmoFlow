@@ -8,7 +8,7 @@
 #SBATCH --exclusive
 #SBATCH --reservation=cosmoflow_test
 #SBATCH -A dasrepo
-#DW persistentdw name=cosmoflow
+#DW persistentdw name=cosmoflow2
 
 
 module load /global/cscratch1/sd/djbard/cosmoML/module/March19-newCray-global
