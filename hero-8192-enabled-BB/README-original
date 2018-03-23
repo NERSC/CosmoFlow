@@ -1,0 +1,31 @@
+Original README from https://github.com/siyucosmo/CosmoNet
+---------------------------------------------------------------
+
+Code to use CNN (convolutional neural network) to predict Cosmological Omega_m and Sigma_8.
+
+This code closely follows the paper http://proceedings.mlr.press/v48/ravanbakhshb16.pdf. The code is to reproduce the result in this paper. 
+
+Basic idea:
+The best model of the universe in currently described by less than 10 parameters in the standard lambdaCDM model where CDM stands for cold dark matter and lambda stands for the cosmological constant. The interests in this paper is Omega_m (matter density) and sigma_8 (the variance in the matter over densities). In this paper, the authors present a first attempt to predict these two parameters from the distribuiton of matter using CNN.
+
+data:
+499 Nbody simulation boxes of dark matter distribution with size 512 Mpc/h and 512^3 number of particles at redshift z=0 and with different Omega_m and Sigma_8 (Motivated by the PLANCK results, the authors use a Gaussian distribution for the A_s(ln(10^10A_s) = 3.089+-0.036) and a flat istribution for Omega_m([0.25,0.35]). Then sigma_8 is obtained b calculating the convolution of the linear power spectrum with a top hat window function with a radius of 8 h^{-1} Mpc.). 
+
+Each of the simulation is divided into 64 smaller sub-boxes. To consider the data invariance and symmetry, we augment the subbox with symmetries of a cube. This symmetry group has 48 elements: 6 different 90◦ rotations and 23 different axis-reflections.
+
+
+How to run the code:
+step 1: python io_Cosmo.py
+io_Cosmo.py: Converting the original input data which is in the format of '.npy' to '.tfrecord' which is recommended by tensorflow.
+I specify the first 400 simulations for training, the next 50 simulations for validation and the last 49 simulations for testing. 
+
+step 2: Change the hyper parameters in hyper_parameters_Cosmo.py (see the notations in the python script)
+
+step 3: python CosmoNet_noFeed.py
+output data:
+	losses.txt: the loss as a function of epoch
+	loss_train.txt: the relative error for training data
+	loss_val.txt: the relative error for validation
+	loss_test.txt: the relative error for test data
+	test_batch_X.txt: the file to store the predicted and the ground true ([\Omega_m_true \Sigma_8_true \Omega_m_predicted \Omega_m_true])
+	best model information: best_validation.meta, best_validation.index, best_validation.data-00000-of-00001 
