@@ -40,8 +40,9 @@ Model = {
 }
 
 RUNPARAM={
+
 	"num_epoch": 200,              #each epoch means a fully pass over the data. The program might stop before running num_epoch (see next line).        
-        "require_improvement": 50,      #if with require_improvement, there is no improvement in validation error, then stop running. 
+  "require_improvement": 50,      #if with require_improvement, there is no improvement in validation error, then stop running. 
 	"num_train":400,                #total number of simulations for training
 	"num_val":50,                   #total number of simulations for validation
         "num_test":49,                  #total number of simulations for testing
@@ -56,6 +57,7 @@ RUNPARAM['iter_test'] = RUNPARAM['num_test']*magic_number/Input_Test['BATCH_SIZE
 
 
 ##### CHANGE THIS TO LOCAL DIRECTORY
+
 #/global/cscratch1/sd/djbard/cosmoML/data-3param/500
 ## data on scratch
 main_dir = "/global/cscratch1/sd/djbard/cosmoML/data-3param/"
