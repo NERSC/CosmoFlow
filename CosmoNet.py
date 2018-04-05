@@ -30,6 +30,7 @@ loss_average_interval = 1  #every 5 epochs
 verbose               = 0  #print out model info
 extra_timers          = 1  #extra perf timers
 
+
 cpe_plugin_pipeline_enabled = 1  #set to 1 to enable high performance comm pipeline
 cpe_plugin_comm_threads     = 2
 
