@@ -3,8 +3,7 @@ import tensorflow as tf
 import hyper_parameters_Cosmo
 import os
 import itertools
-
-
+import random
 
 def _float64_feature(value):
   return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
@@ -15,8 +14,9 @@ def _bytes_feature(value):
 
 class loadNpyData:
     def __init__(self,data,label,num):
-        self.data = data
-        self.label = label
+        ### suggestion from James to cast as 32-bit
+        self.data = data.astype(dtype = np.float32) ##data
+        self.label = label.astype(dtype = np.float32) ##label
         self.num = num
     
     def convert_to(self):
@@ -40,9 +40,10 @@ class loadTfrecordData:
             example = tf.train.Example()
             example.ParseFromString(filename)
             data_raw = (example.features.feature['data_raw'].bytes_list.value[0])
-            data = np.fromstring(data_raw, dtype=np.float).reshape([-1,64,64,64,1])
+            data = np.fromstring(data_raw, dtype=np.float).reshape([-1,128,128,128,1])
             label_raw = (example.features.feature['label_raw'].bytes_list.value[0])
             label = np.fromstring(label_raw,dtype=np.float).reshape([-1,hyper_parameters_Cosmo.DATAPARAM["output_dim"] ])
+            
         return data,label
 
 def read_tfrecord(filename_queue):
@@ -55,31 +56,20 @@ def read_tfrecord(filename_queue):
         "label_raw": tf.FixedLenFeature([],tf.string)
     }
     )
-    
-    NbodySimuDecode = tf.decode_raw(parsed_example['data_raw'],tf.float64)
-    labelDecode = tf.decode_raw(parsed_example['label_raw'],tf.float64)
-    NbodySimus = tf.reshape(NbodySimuDecode,[64,64,64])
-        
-    #augment 
-    NbodySimus = tf.cond(tf.random_uniform([1],maxval=1)[0] < tf.constant(.5),lambda:NbodySimus,lambda:NbodySimus[::-1,:,...])
-    NbodySimus = tf.cond(tf.random_uniform([1],maxval=1)[0] < tf.constant(.5),lambda:NbodySimus,lambda:NbodySimus[:,::-1,...])
-    NbodySimus = tf.cond(tf.random_uniform([1],maxval=1)[0] < tf.constant(.5),lambda:NbodySimus,lambda:NbodySimus[:,:,::-1])
-    
-    prand = tf.random_uniform([1],maxval=1)[0]
-    NbodySimus = tf.cond(prand < tf.constant(1./6),lambda:tf.transpose(NbodySimus, perm = (1,2,0)),lambda:NbodySimus)
-    NbodySimus = tf.cond(tf.logical_and(prand < tf.constant(2./6) , prand > tf.constant(1./6)), lambda:tf.transpose(NbodySimus, perm = (1,0,2)),lambda:NbodySimus)
-    NbodySimus = tf.cond(tf.logical_and(prand < tf.constant(3./6) , prand > tf.constant(2./6)), lambda:tf.transpose(NbodySimus, perm = (0,2,1)),lambda:NbodySimus)
-    NbodySimus = tf.cond(tf.logical_and(prand < tf.constant(4./6) , prand > tf.constant(3./6)), lambda:tf.transpose(NbodySimus, perm = (2,0,1)),lambda:NbodySimus)
-    NbodySimus = tf.cond(tf.logical_and(prand < tf.constant(5./6) , prand > tf.constant(4./6)), lambda:tf.transpose(NbodySimus, perm = (2,1,0)),lambda:NbodySimus)
-    
+
+    NbodySimuDecode = tf.decode_raw(parsed_example['data_raw'],tf.float32)
+    labelDecode = tf.decode_raw(parsed_example['label_raw'],tf.float32)
+
+    NbodySimus = tf.reshape(NbodySimuDecode,[128,128,128])
+ 
     #normalize
-    NbodySimus /= (tf.reduce_sum(NbodySimus)/64**3+0.)
+    NbodySimus /= (tf.reduce_sum(NbodySimus)/128**3+0.)
     NbodySimuAddDim = tf.expand_dims(NbodySimus,axis = 3)
     label = tf.reshape(labelDecode,[hyper_parameters_Cosmo.DATAPARAM["output_dim"] ])
-    ###
-    ### 0.3, 0.02853, 0.8628, 0.04887, 0.701,0.05691
-    label = (label - tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsAVG'],dtype = tf.float64))/tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsSTD']
-,dtype = tf.float64)
+
+
+    label = (label - tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsAVG'],dtype = tf.float32))/tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsSTD']
+                                                                                                            ,dtype = tf.float32)
     return NbodySimuAddDim,label
     
 def readDataSet(filenames):
@@ -87,10 +77,10 @@ def readDataSet(filenames):
     print filenames
     filename_queue = tf.train.string_input_producer(filenames,num_epochs=None,shuffle=True)
     NbodySimus,label= read_tfrecord(filename_queue)
-    #NbodyList = [read_tfrecord(filename_queue) for _ in range(hyper_parameters_Cosmo.Input["NUM_THREADS"])]
+
     NbodySimus_batch, label_batch = tf.train.shuffle_batch(
     	[NbodySimus,label],
-	#NbodyList,
+	
     	batch_size = hyper_parameters_Cosmo.Input["BATCH_SIZE"],
     	num_threads = hyper_parameters_Cosmo.Input["NUM_THREADS"],
     	capacity = hyper_parameters_Cosmo.Input["CAPACITY"],
@@ -111,19 +101,19 @@ def read_test_tfrecord(filename_queue):
     }
     )
 
-    NbodySimuDecode = tf.decode_raw(parsed_example['data_raw'],tf.float64)
-    labelDecode = tf.decode_raw(parsed_example['label_raw'],tf.float64)
-    NbodySimus = tf.reshape(NbodySimuDecode,[64,64,64])
-    NbodySimus /= (tf.reduce_sum(NbodySimus)/64**3+0.)
+    NbodySimuDecode = tf.decode_raw(parsed_example['data_raw'],tf.float32)
+    labelDecode = tf.decode_raw(parsed_example['label_raw'],tf.float32)
+    NbodySimus = tf.reshape(NbodySimuDecode,[128,128,128])
+    NbodySimus /= (tf.reduce_sum(NbodySimus)/128**3+0.)
     NbodySimuAddDim = tf.expand_dims(NbodySimus,3)
+    #label = tf.reshape(labelDecode,[2])
     label = tf.reshape(labelDecode,[hyper_parameters_Cosmo.DATAPARAM["output_dim"] ])
-    ### 0.3, 0.02853, 0.8628, 0.04887, 0.701,0.05691
-    labelAddDim = (label - tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsAVG'],dtype = tf.float64))/tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsSTD']
-,dtype = tf.float64)
+    
+    labelAddDim = (label - tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsAVG'],dtype = tf.float32))/tf.constant(hyper_parameters_Cosmo.DATAPARAM['zsSTD']
+                                                                                                                  ,dtype = tf.float32)
+
     print NbodySimuAddDim.shape
    
-
-
     return NbodySimuAddDim,labelAddDim
     
 def readTestSet(filenames):
@@ -143,23 +133,36 @@ def readTestSet(filenames):
        
         
 
-
-######## for genererating data
 if __name__ == '__main__':
-    order = np.random.permutation(64*400)
-    order = np.split(np.append(order,np.arange(64*400,64*499)),499)
+
     
-    label_path = os.path.join('/global/cscratch1/sd/djbard/MUSIC_pyCola/egpbos-pycola-672c58551ff1/OmSiH/','basic_info_3.txt')
+    
+    label_path = os.path.join('/global/cscratch1/sd/djbard/MUSIC_pyCola/egpbos-pycola-672c58551ff1/OmSiNs/twothousand/','list-500-noCiC-128from256.txt')
     labels = np.loadtxt(label_path,delimiter=',')    
        
-    for i in range(0,499):
+    
+    ### How many tensorflow files do we want to make? 
+    ### Assuming 500 here, with teh first 400 a raondom mix, 
+    ### and the last 100 NOT mixed for val/test sets. 
+    for i in range(400,500):
         data = []
         label = []
-        for j in order[i]:
-            numDirectory = int(j/64)
-            numFile = j%64
-            data_path = os.path.join('/global/cscratch1/sd/djbard/cosmoML/NbodySimu/',str('01')+str(numDirectory).rjust(3,'0'),str(numFile)+'.npy')
+        for j in range(64):
+            if i<400:
+              numDirectory = random.randrange(1000,1400) ###
+            else:
+              numDirectory = (i)+1000 ## don't want this to be random!!
+            numFile = random.randrange(8)
+            dirname = numDirectory
+
+            #print i, j, numDirectory
+            ## pull a sub-volumes from the 2000 dir
+            data_path = os.path.join('/global/cscratch1/sd/djbard/MUSIC_pyCola/egpbos-pycola-672c58551ff1/OmSiNs/twothousand/128from256-500/',str(dirname).rjust(3,'0'),str(numFile)+'.npy')
+            #print data_path
             data = np.append(data,np.load(data_path))
-            label = np.append(label,labels[numDirectory][[1,4]])
-        loadNpyData(data.reshape(-1,64,64,64,1),label.reshape(-1,3),i).convert_to()
+            label = np.append(label,labels[ (numDirectory-1000)][[1,2,3]])
+            
+
+        loadNpyData(data.reshape(-1,128,128,128,1),label.reshape(-1,3),i).convert_to()
     
+   
