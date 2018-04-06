@@ -1,5 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=Cosmo_job
+#SBATCH -t 06:00:00
 #SBATCH --nodes=512
 #SBATCH --ntasks-per-node=1
 #SBATCH -L SCRATCH

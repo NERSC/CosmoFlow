@@ -3,7 +3,7 @@
 import tensorflow as tf
 import numpy as np
 from io_Cosmo import *
-import hyper_parameters_Cosmo as hp
+import hyper_parameters_Cosmo_106 as hp
 import time
 
 #import the Cray PE ML Plugin
