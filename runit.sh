@@ -1,6 +1,5 @@
 #!/bin/bash
 #SBATCH --job-name=Cosmo_job
-
 #SBATCH --time=12:00:00
 #SBATCH --nodes=160
 #SBATCH --ntasks-per-node=1
@@ -8,18 +7,13 @@
 #SBATCH --partition=regular
 #SBATCH -C knl,quad,cache
 #SBATCH --exclusive
-#####SBATCH -q premium
 #SBATCH -A dasrepo
+#DW persistentdw name=CosmoFlow3param
 
-module load /global/cscratch1/sd/djbard/cosmoML/module/March12-newCray
-
-unset OMP_NUM_THREADS
-export KMP_AFFINITY=compact,norespect
-export KMP_HW_SUBSET=66C@2,1T
-
+module load /global/cscratch1/sd/pjm/modulefiles/cosmoflow-gb-apr10
 
 BZsize=1
-i=160
+i=$SLURM_JOB_NUM_NODES
 
 LOGName=LogCosmoFlow_N$(( ${i} ))BZ$(( ${BZsize} ))
 rm -rf result/*

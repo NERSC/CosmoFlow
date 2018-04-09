@@ -31,8 +31,10 @@ verbose               = 0  #print out model info
 extra_timers          = 1  #extra perf timers
 
 
-cpe_plugin_pipeline_enabled = 1  #set to 1 to enable high performance comm pipeline
+cpe_plugin_pipeline_enabled = 0  #set to 1 to enable high performance comm pipeline
 cpe_plugin_comm_threads     = 2
+adam_beta_corrections       = 0
+lr_scaling_mode             = 0  # 0 = no scaling, 1 = sqrt() scaling, 2 = linear scaling
 
 def weight_variable(shape,name):
     W = tf.get_variable(name,shape=shape, initializer=tf.contrib.layers.xavier_initializer())
@@ -192,16 +194,14 @@ class CosmoNet:
         lossL1Test = tf.reduce_mean(tf.abs(test_true-test_predict)/test_true)
         return lossL1Test,test_true,test_predict
 
-    def optimize(self):
+    def optimize(self, beta1, beta2):
         loss = self.loss()
         with tf.name_scope('adam_optimizer'):
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
 
                 #use the CPE ML Plugin to average gradients across processes
-                optimizer      = tf.train.AdamOptimizer(hp.Model['LEARNING_RATE'])
-                if (cpe_plugin_pipeline_enabled == 1):
-                    optimizer = tf.train.AdamOptimizer(hp.Model['LEARNING_RATE'], beta2=0.95)
+                optimizer      = tf.train.AdamOptimizer(hp.Model['LEARNING_RATE'], beta1=beta1, beta2=beta2)
                 grads_and_vars = optimizer.compute_gradients(loss)
                 grads          = mc.gradients([gv[0] for gv in grads_and_vars], 0)
                 gs_and_vs      = [(g,v) for (_,v), g in zip(grads_and_vars, grads)]
@@ -211,10 +211,6 @@ class CosmoNet:
         return train_step, loss,lossL1Train,train_true,train_predict
     
     def train(self):
-        train_step, loss, lossL1Train,train_true,train_predict = self.optimize()
-        lossL1Val,val_true,val_predict = self.validation_loss()
-        lossL1Test,test_true,test_predict = self.test_loss()
-        
         config = tf.ConfigProto()
         #config.gpu_options.per_process_gpu_memory_fraction = 0.4
 
@@ -233,6 +229,9 @@ class CosmoNet:
         require_improvement = hp.RUNPARAM['require_improvement']               #Stop optimization if no improvement found in this many iterations.
         total_iterations = 0                   #Counter for total number of iterations performed so far.        
 
+        #Adam parameters
+        beta1 = 0.9
+        beta2 = 0.999
         
         #initialize the CPE ML Plugin with one team (single thread for now) and the model size
         totsize = sum([reduce(lambda x, y: x*y, v.get_shape().as_list()) for v in tf.trainable_variables()])
@@ -241,10 +240,28 @@ class CosmoNet:
         hp.RUNPARAM['batch_per_epoch_val'] = int(hp.RUNPARAM['batch_per_epoch_val'] / mc.get_nranks())
         totsteps = int(hp.RUNPARAM['num_epoch'] * hp.RUNPARAM['batch_per_epoch'])
         if (cpe_plugin_pipeline_enabled == 1):
-            cool_down = - int(0.375 * totsteps)
+            cool_down = - int(0.45 * totsteps)
             mc.config_team(0, 0, cool_down, totsteps, 2, 100)
+            beta2 = 0.95
         else:
             mc.config_team(0, 0, totsteps, totsteps, 2, 100)
+
+        #correct the Adam parameters based on the number of ranks, which accounts for effective batch size
+        #base values determine at global batch size = 512
+        if (adam_beta_corrections == 1 and mc.get_nranks() > 512):
+            scale = (hp.Input['BATCH_SIZE'] * mc.get_nranks())/512.0
+            beta1 = pow(beta1, scale)
+            beta2 = pow(beta2, scale)
+
+        # scale the learning rate by global batch size if requested with 512 global batch size baseline
+        if (lr_scaling_mode == 1 and mc.get_nranks() > 512):
+            hp.Model['LEARNING_RATE'] = sqrt(mc.get_nranks()/512.) * hp.Model['LEARNING_RATE']
+        elif (lr_scaling_mode == 2 and mc.get_nranks() > 512):
+            hp.Model['LEARNING_RATE'] = (mc.get_nranks()/512.) * hp.Model['LEARNING_RATE'] 
+
+        train_step, loss, lossL1Train,train_true,train_predict = self.optimize(beta1, beta2)
+        lossL1Val,val_true,val_predict = self.validation_loss()
+        lossL1Test,test_true,test_predict = self.test_loss()
 
         if (mc.get_rank() == 0):
             print("+------------------------------+")
@@ -252,6 +269,10 @@ class CosmoNet:
             print("| # Ranks = {:5d}              |".format(mc.get_nranks()))
             print("| Global Batch = {:6d}        |".format(mc.get_nranks() * hp.Input['BATCH_SIZE']))
             print("| # Parameters = {:9d}     |".format(totsize))
+            if (cpe_plugin_pipeline_enabled == 1):
+                print("| CPE Plugin Pipeline Enabled  |")
+            else:
+                print("| CPE Plugin Pipeline Disabled |")
             print("+------------------------------+") 
  
         #use the CPE ML Plugin to broadcast initial model parameter values
@@ -276,7 +297,7 @@ class CosmoNet:
                 
                 elapsed_time = 0.
                 for epoch in range(hp.RUNPARAM['num_epoch']):
-                    save_path = os.path.join(hp.Path['Model_path'], 'best_validation')
+                    save_path = os.path.join(hp.Path['Model_path'], 'best_validation_epoch_' + str(epoch))
                     total_iterations += 1
                     start_time = time.time()
                     loss_per_epoch_val = 0
@@ -310,8 +331,8 @@ class CosmoNet:
                     for i in range(hp.RUNPARAM['batch_per_epoch_val']):
                         if (mc.get_rank() == 0):
                             print("Val Step = " + str(i))
-                            loss_,val_true_,val_predict_ = sess.run([lossL1Val,val_true,val_predict])
-                            loss_per_epoch_val += loss_
+                        loss_,val_true_,val_predict_ = sess.run([lossL1Val,val_true,val_predict])
+                        loss_per_epoch_val += loss_
                     if (mc.get_rank() == 0 and extra_timers == 1):
                         print("validation in Epoch {} took {:.3f}s".format(epoch, time.time() - val_start_time))
                         
@@ -369,7 +390,8 @@ class CosmoNet:
                         print("Box {} took {:.3f}s".format(i, time.time() - start_time))
                         print("  test loss: %.3f"%lossL1Test_)
                         np.savetxt(os.path.join(hp.Path['test_result'],'test_batch_'+str(i)+'.txt'),np.c_[test_true_,test_predict_])
-                        np.savetxt(os.path.join(hp.Path['test_result'],'loss_test.txt'),loss_test)
+                if (mc.get_rank() == 0):
+                    np.savetxt(os.path.join(hp.Path['test_result'],'loss_test.txt'),loss_test)
                 coord.request_stop()
                 coord.join(threads)
 
@@ -377,20 +399,19 @@ class CosmoNet:
         mc.finalize()
 
 if __name__ == "__main__":
-    """    
+    """ 
     #use dummy data
     s = 128   
     batch=1 
     NbodySimuDataBatch32 = tf.random_normal([batch, s, s, s, 1], seed=1) 
-    NbodySimuLabelBatch32 = tf.random_normal([batch,2], seed=1)  
+    NbodySimuLabelBatch32 = tf.random_normal([batch,3], seed=1)  
     valDataBatch32 = tf.random_normal([batch, s, s, s, 1], seed=2) 
-    valLabelbatch32 = tf.random_normal([batch,2], seed=2)   
+    valLabelbatch32 = tf.random_normal([batch,3], seed=2)   
     testDataBatch32 = tf.random_normal([batch, s, s, s, 1], seed=3) 
-    testLabelbatch32 = tf.random_normal([batch,2], seed=3) 
+    testLabelbatch32 = tf.random_normal([batch,3], seed=3) 
     trainCosmo = CosmoNet(train_data=NbodySimuDataBatch32,train_label=NbodySimuLabelBatch32,val_data=valDataBatch32,val_label=valLabelbatch32,test_data=testDataBatch32,test_label=testLabelbatch32,is_train=True, is_test=False)
     trainCosmo.train() 
-    """
-
+    """ 
 
     #use real data
     NbodySimuDataBatch32, NbodySimuLabelBatch32 = readDataSet(filenames = [hp.Path['train_data']+str(i)+'.tfrecord' for i in range(0,(hyper_parameters_Cosmo.RUNPARAM["num_train"]))])

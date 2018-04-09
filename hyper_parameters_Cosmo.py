@@ -41,11 +41,11 @@ Model = {
 
 RUNPARAM={
 
-	"num_epoch": 200,              #each epoch means a fully pass over the data. The program might stop before running num_epoch (see next line).        
+	"num_epoch": 25,              #each epoch means a fully pass over the data. The program might stop before running num_epoch (see next line).        
   "require_improvement": 50,      #if with require_improvement, there is no improvement in validation error, then stop running. 
-	"num_train":400,                #total number of simulations for training
-	"num_val":50,                   #total number of simulations for validation
-        "num_test":49,                  #total number of simulations for testing
+	"num_train":975,                #total number of simulations for training
+	"num_val":150,                   #total number of simulations for validation
+        "num_test":50,                  #total number of simulations for testing
 	"batch_per_epoch":0,             
 	"batch_per_epoch_val":0,
         "iter_test":0                 
@@ -60,13 +60,15 @@ RUNPARAM['iter_test'] = RUNPARAM['num_test']*magic_number/Input_Test['BATCH_SIZE
 
 #/global/cscratch1/sd/djbard/cosmoML/data-3param/500
 ## data on scratch
-main_dir = "/global/cscratch1/sd/djbard/cosmoML/data-3param/"
-target_dir = "500" #"orig_paper"
+#main_dir = "/global/cscratch1/sd/djbard/cosmoML/data-3param/"
 
+# path on Piz Daint
+#main_dir = "/scratch/snx3000/pjm/CosmoFlow_data/3param/"
+#target_dir = "8000-nodupes"
 
-## BB dir
-#main_dir = someVariable = (os.environ['DW_PERSISTENT_STRIPED_CosmoFlow'])
-#target_dir = "/two-param-500-128cubefrom256-64perTfrecord-64From500perTfrecord/" #"orig_paper"
+# Cori BB path
+main_dir = someVariable = (os.environ['DW_PERSISTENT_STRIPED_CosmoFlow3param'])
+target_dir = "/8000-nodupes/"
 
 Path={
 
