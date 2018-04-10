@@ -1,10 +1,11 @@
-## for this one, change the order between relu and batch
+# for this one, change the order between relu and batch
 
 import tensorflow as tf
 import numpy as np
 from io_Cosmo import *
 import hyper_parameters_Cosmo as hp
 import time
+import math
 
 from tensorflow.python.ops import math_ops ##
 
@@ -43,7 +44,8 @@ cpe_plugin_comm_threads     = 4
 
 if opt_type == 'ADAM':
     adam_beta_corrections       = 0
-    lr_scaling_mode             = 0  # 0 = no scaling, 1 = sqrt() scaling, 2 = linear scaling
+    lr_scaling_mode             = 1  # 0 = no scaling, 1 = sqrt() scaling, 2 = linear scaling
+    adam_lr_decay               = 1
 elif (opt_type == 'ADAM_LARC') or (opt_type == 'ADAM_LARS'):
     hp.Model['LEARNING_RATE'] = np.maximum(0.0005, hp.Model['LEARNING_RATE'])
     adam_beta_corrections       = 0
@@ -267,12 +269,29 @@ class CosmoNet:
                 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
                 with tf.control_dependencies(update_ops):
 
+                    num_batches_per_epoch = 4 #(float(hp.RUNPARAM['num_train']) *hp.magic_number/hp.Input['BATCH_SIZE']/num_nodes) 
+
                     #use the CPE ML Plugin to average gradients across processes
-                    optimizer      = tf.train.AdamOptimizer(hp.Model['LEARNING_RATE'], beta1=beta1, beta2=beta2)
+                    lr = hp.Model['LEARNING_RATE']
+                    if (lr_scaling_mode > 0 and adam_lr_decay == 1):
+                        boundaries = [np.int64(num_batches_per_epoch * x) for x in [6, 10]]
+                        lr1 = lr
+                        lr2 = lr
+                        if (lr_scaling_mode == 1):
+                            lr1 = lr / (0.5*math.sqrt(num_nodes))
+                            lr2 = lr / math.sqrt(num_nodes)
+                        elif (lr_scaling_mode == 2):
+                            lr1 = lr / (0.5*num_nodes)
+                            lr2 = lr / num_nodes
+                        values = [lr, lr1, lr2]
+                        lr = tf.train.piecewise_constant(global_step, boundaries, values)
+                        lr = tf.Print(lr, [lr], message="LR = ")
+
+                    optimizer      = tf.train.AdamOptimizer(lr, beta1=beta1, beta2=beta2)
                     grads_and_vars = optimizer.compute_gradients(loss)
                     grads          = mc.gradients([gv[0] for gv in grads_and_vars], 0)
                     gs_and_vs      = [(g,v) for (_,v), g in zip(grads_and_vars, grads)]
-                    train_step     = optimizer.apply_gradients(gs_and_vs)
+                    train_step     = optimizer.apply_gradients(gs_and_vs, global_step=global_step)
         elif opt_type == 'ADAM_LARC':
             with tf.name_scope('ADAM_LARC_optimizer'):
                 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -350,7 +369,7 @@ class CosmoNet:
 
         # scale the learning rate by global batch size if requested with 512 global batch size baseline
         if (lr_scaling_mode == 1 and mc.get_nranks() > 512):
-            hp.Model['LEARNING_RATE'] = sqrt(mc.get_nranks()/512.) * hp.Model['LEARNING_RATE']
+            hp.Model['LEARNING_RATE'] = math.sqrt(mc.get_nranks()/512.) * hp.Model['LEARNING_RATE']
         elif (lr_scaling_mode == 2 and mc.get_nranks() > 512):
             hp.Model['LEARNING_RATE'] = (mc.get_nranks()/512.) * hp.Model['LEARNING_RATE'] 
         if (verbose == 1):
