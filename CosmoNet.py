@@ -285,7 +285,6 @@ class CosmoNet:
                             lr2 = lr / num_nodes
                         values = [lr, lr1, lr2]
                         lr = tf.train.piecewise_constant(global_step, boundaries, values)
-                        lr = tf.Print(lr, [lr], message="LR = ")
 
                     optimizer      = tf.train.AdamOptimizer(lr, beta1=beta1, beta2=beta2)
                     grads_and_vars = optimizer.compute_gradients(loss)
@@ -385,6 +384,8 @@ class CosmoNet:
             print("| # Ranks = {:5d}              |".format(mc.get_nranks()))
             print("| Global Batch = {:6d}        |".format(mc.get_nranks() * hp.Input['BATCH_SIZE']))
             print("| # Parameters = {:9d}     |".format(totsize))
+            print("| Optimizer = " + opt_type + " |")
+            print("| Eff. Learning Rate = {:8.3E}  |").format(hp.Model['LEARNING_RATE'])
             if (cpe_plugin_pipeline_enabled == 1):
                 print("| CPE Plugin Pipeline Enabled  |")
             else:
