@@ -6,6 +6,8 @@ from io_Cosmo import *
 import hyper_parameters_Cosmo as hp
 import time
 
+from tensorflow.python.ops import math_ops ##
+
 #import the Cray PE ML Plugin
 import ml_comm as mc
 import os
@@ -16,7 +18,7 @@ if (sys.version_info > (3, 0)):
 if "cori" in os.environ['HOST']:
     os.unsetenv('OMP_NUM_THREADS')
     os.environ['KMP_AFFINITY']  = "compact,norespect"
-    os.environ['KMP_HW_SUBSET'] = "66C@2,1T"
+    os.environ['KMP_HW_SUBSET'] = "64C@2,1T"
 
 #def weight_variable(shape):
 #        initial = tf.truncated_normal(shape, stddev=0.1)
@@ -30,11 +32,23 @@ loss_average_interval = 1  #every 5 epochs
 verbose               = 0  #print out model info
 extra_timers          = 1  #extra perf timers
 
+opt_type = 'ADAM' #  options are: 'ADAM', 'ADAM_LARC', 'ADAM_LARS'
+enable_weight_decay = 0 #set to 1 to enable weight decay
+
+if (verbose == 1):
+    print('opt_type is: ',opt_type)
 
 cpe_plugin_pipeline_enabled = 0  #set to 1 to enable high performance comm pipeline
-cpe_plugin_comm_threads     = 2
-adam_beta_corrections       = 0
-lr_scaling_mode             = 0  # 0 = no scaling, 1 = sqrt() scaling, 2 = linear scaling
+cpe_plugin_comm_threads     = 4
+
+if opt_type == 'ADAM':
+    adam_beta_corrections       = 0
+    lr_scaling_mode             = 0  # 0 = no scaling, 1 = sqrt() scaling, 2 = linear scaling
+elif (opt_type == 'ADAM_LARC') or (opt_type == 'ADAM_LARS'):
+    hp.Model['LEARNING_RATE'] = np.maximum(0.0005, hp.Model['LEARNING_RATE'])
+    adam_beta_corrections       = 0
+    lr_scaling_mode             = 0
+    cpe_plugin_pipeline_enabled = 0 
 
 def weight_variable(shape,name):
     W = tf.get_variable(name,shape=shape, initializer=tf.contrib.layers.xavier_initializer())
@@ -60,7 +74,11 @@ class CosmoNet:
         self.is_test = is_test
         self.save_path = save_path
         #self.num_parameters = 3*3*3*1*2+4*4*4*2*12+4*4*4*12*64+3*3*3*64*64+2*2*2*64*128+2*2*2*128*12+1024*1024+1024*256+256*2
-        self.num_parameters = 1
+        if enable_weight_decay:
+            self.num_parameters = 7041443 # hard code for 3-param topology
+        else: 
+            self.num_parameters = 1
+        self.learning_rate= None ########
 
         #initialize weight and bias
         self.W = {}
@@ -169,8 +187,11 @@ class CosmoNet:
         with tf.name_scope('loss'):
             predictions = self.deepNet(inputBatch = self.train_data,IS_TRAINING = True,keep_prob = hp.Model['DROP_OUT'],scope='conv_bn',reuse = None)
             lossL1 = tf.reduce_mean(tf.abs(self.train_label-predictions))
-            #for w in self.W:
-            #    lossL1 += hp.Model["REG_RATE"]*tf.nn.l2_loss(self.W[w])/self.num_parameters
+            if (enable_weight_decay) and (math_ops.not_equal(hp.Model["REG_RATE"], tf.constant(0.0))):############
+                if (verbose == 1):
+                    print("weight decay is turned on")
+                for w in self.W:
+                    lossL1 += hp.Model["REG_RATE"]*tf.nn.l2_loss(self.W[w])/self.num_parameters
             return lossL1
     
     def validation_loss(self):
@@ -194,23 +215,97 @@ class CosmoNet:
         lossL1Test = tf.reduce_mean(tf.abs(test_true-test_predict)/test_true)
         return lossL1Test,test_true,test_predict
 
-    def optimize(self, beta1, beta2):
-        loss = self.loss()
-        with tf.name_scope('adam_optimizer'):
-            update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-            with tf.control_dependencies(update_ops):
+    #lars optimizer:
+    def get_lars_optimizer(self,opt_type,loss,global_step,learning_rate,momentum=0.9,LARS_mode="clip",LARS_eta=0.002,LARS_epsilon=1./16000.):
+        #set up optimizers
+        if opt_type == "Adam":
+            optim = tf.train.AdamOptimizer(learning_rate=learning_rate)
+        elif opt_type == "RMSProp":
+            optim = tf.train.RMSPropOptimizer(learning_rate=learning_rate)
+        elif opt_type == "SGD":
+            optim = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=momentum)
+        else:
+            raise ValueError("Error, optimizer {} unsupported.".format(opt_type))
 
-                #use the CPE ML Plugin to average gradients across processes
-                optimizer      = tf.train.AdamOptimizer(hp.Model['LEARNING_RATE'], beta1=beta1, beta2=beta2)
-                grads_and_vars = optimizer.compute_gradients(loss)
-                grads          = mc.gradients([gv[0] for gv in grads_and_vars], 0)
-                gs_and_vs      = [(g,v) for (_,v), g in zip(grads_and_vars, grads)]
-                train_step     = optimizer.apply_gradients(gs_and_vs)
+        if (verbose == 1):
+            print("LARS_mode=",LARS_mode)
+
+        #compute gradients
+        grads_and_vars = optim.compute_gradients(loss)
+        grads          = mc.gradients([gv[0] for gv in grads_and_vars], 0)
+        gs_and_vs      = [(g,v) for (_,v), g in zip(grads_and_vars, grads)]
+        for idx, (g, v) in enumerate(gs_and_vs):
+            if g is not None:
+                v_norm = tf.norm(v, ord='euclidean')
+                g_norm = tf.norm(g, ord='euclidean')
+
+                lars_local_lr = tf.cond(
+                    pred = math_ops.logical_and( math_ops.not_equal(v_norm, tf.constant(0.0)),
+                                            math_ops.not_equal(g_norm, tf.constant(0.0)) ),
+                                            true_fn = lambda: LARS_eta * v_norm / g_norm,
+                                            false_fn = lambda: LARS_epsilon)
+                if LARS_mode == "scale":
+                    effective_lr = lars_local_lr
+                else:
+                    effective_lr = math_ops.minimum(lars_local_lr, 1.0)
+                #multiply gradients
+                gs_and_vs[idx] = (math_ops.scalar_mul(effective_lr, g), v)
+
+        #apply gradients:
+        grad_updates = optim.apply_gradients(gs_and_vs,global_step=global_step)
+
+        # Ensure the train_tensor computes grad_updates.
+        with tf.control_dependencies([loss]):
+            return grad_updates
+
+
+    def optimize(self, num_nodes, global_step, beta1, beta2):
+        loss = self.loss()
+        #opt_type = 'ADAM_LARC' # 'ADAM'  #'ADAM_LARS' #'LARS'
+        if opt_type =='ADAM':
+            with tf.name_scope('adam_optimizer'):
+                update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+                with tf.control_dependencies(update_ops):
+
+                    #use the CPE ML Plugin to average gradients across processes
+                    optimizer      = tf.train.AdamOptimizer(hp.Model['LEARNING_RATE'], beta1=beta1, beta2=beta2)
+                    grads_and_vars = optimizer.compute_gradients(loss)
+                    grads          = mc.gradients([gv[0] for gv in grads_and_vars], 0)
+                    gs_and_vs      = [(g,v) for (_,v), g in zip(grads_and_vars, grads)]
+                    train_step     = optimizer.apply_gradients(gs_and_vs)
+        elif opt_type == 'ADAM_LARC':
+            with tf.name_scope('ADAM_LARC_optimizer'):
+                update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+                with tf.control_dependencies(update_ops):
+                    self.learning_rate = hp.Model['LEARNING_RATE']
+                    train_step = self.get_lars_optimizer("Adam",loss,global_step, self.learning_rate,LARS_mode="clip")
+
+        elif opt_type =='ADAM_LARS':
+            with tf.name_scope('ADAM_LARS_optimizer'):
+                update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+                with tf.control_dependencies(update_ops):
+
+                    num_batches_per_epoch = (float(hp.RUNPARAM['num_train']) *hp.magic_number/hp.Input['BATCH_SIZE']/num_nodes)## avoid using the existing hyperparameter as it will be overwritten!!
+                    decay_steps = int(num_batches_per_epoch * hp.RUNPARAM['num_epochs_per_decay'])
+                    num_steps_for_warmup = int(num_batches_per_epoch * hp.RUNPARAM['LR_warmup_epoch_num'])
+                    base_LR=hp.Model['LEARNING_RATE']
+                    warmup_start_LR=0.0001 if (num_nodes*hp.Input['BATCH_SIZE'] <=8192) else 0.001
+
+                    def learning_rate_fn(global_step):
+                        global_step_val = math_ops.cast(global_step, tf.float32)
+                        def b1(): return  (global_step_val * base_LR + (num_steps_for_warmup - global_step_val) * warmup_start_LR)/num_steps_for_warmup
+                        def b2(): return  math_ops.cast(base_LR, tf.float32)
+                        return tf.cond(tf.less(global_step_val, num_steps_for_warmup), lambda: b1(), lambda: b2())
+                    self.learning_rate = learning_rate_fn(global_step)
+
+                    train_step = self.get_lars_optimizer("Adam",loss,global_step, self.learning_rate,LARS_mode="scale")
 
         lossL1Train,train_true,train_predict = self.train_loss()    
         return train_step, loss,lossL1Train,train_true,train_predict
     
     def train(self):
+        global_step = tf.train.get_or_create_global_step()#
+
         config = tf.ConfigProto()
         #config.gpu_options.per_process_gpu_memory_fraction = 0.4
 
@@ -258,8 +353,10 @@ class CosmoNet:
             hp.Model['LEARNING_RATE'] = sqrt(mc.get_nranks()/512.) * hp.Model['LEARNING_RATE']
         elif (lr_scaling_mode == 2 and mc.get_nranks() > 512):
             hp.Model['LEARNING_RATE'] = (mc.get_nranks()/512.) * hp.Model['LEARNING_RATE'] 
+        if (verbose == 1):
+            print('Effective learning rate=', hp.Model['LEARNING_RATE'])
 
-        train_step, loss, lossL1Train,train_true,train_predict = self.optimize(beta1, beta2)
+        train_step, loss, lossL1Train,train_true,train_predict = self.optimize(mc.get_nranks(), global_step, beta1, beta2)
         lossL1Val,val_true,val_predict = self.validation_loss()
         lossL1Test,test_true,test_predict = self.test_loss()
 
@@ -304,14 +401,14 @@ class CosmoNet:
                     loss_per_epoch_train = 0
                     for i in range(hp.RUNPARAM['batch_per_epoch']):  
                         step_start_time = time.time()
-                        _,lossTrain,lossL1Train_,train_true_,train_predict_ = sess.run([train_step,loss,lossL1Train,train_true,train_predict])
+                        _,lossTrain,lossL1Train_,train_true_,train_predict_, gstep = sess.run([train_step,loss,lossL1Train,train_true,train_predict, global_step])
                         step_finish_time = time.time()
                         
                         elapsed_time += (step_finish_time-step_start_time)
                         samps_per_sec = mc.get_nranks() * (epoch * hp.RUNPARAM['batch_per_epoch'] * hp.Input['BATCH_SIZE'] + (i+1) * hp.Input['BATCH_SIZE']) / elapsed_time
                         samps_per_sec_inst = mc.get_nranks() * hp.Input['BATCH_SIZE'] / (step_finish_time-step_start_time)
                         if (mc.get_rank() == 0):
-                            print("Train Step: " + str(i) + ", Samples/Sec = " + str(samps_per_sec) + ", Samples/Sec(inst) = " + str(samps_per_sec_inst) + ", Loss = " + str(lossTrain))
+                            print("Train Step: " + str(i) + ", global step: " + str(gstep) + ", Samples/Sec = " + str(samps_per_sec) + ", Samples/Sec(inst) = " + str(samps_per_sec_inst) + ", Loss = " + str(lossTrain))
                         loss_per_epoch_train +=lossL1Train_
 
                     if (mc.get_rank() == 0 and extra_timers == 1):
@@ -421,7 +518,7 @@ if __name__ == "__main__":
     testDataBatch32, testLabelbatch32 = readTestSet(filenames=[hp.Path['test_data']+'/'+str(i)+".tfrecord" for i in range((hyper_parameters_Cosmo.RUNPARAM["num_train"]+hyper_parameters_Cosmo.RUNPARAM["num_val"]),(hyper_parameters_Cosmo.RUNPARAM["num_train"]+hyper_parameters_Cosmo.RUNPARAM["num_val"]+hyper_parameters_Cosmo.RUNPARAM["num_test"]))]);
     ###testDataBatch32, testLabelbatch32 = tf.cast(testDataBatch64,tf.float32),tf.cast(testLabelbatch64,tf.float32)
 
-    trainCosmo = CosmoNet(train_data=NbodySimuDataBatch32,train_label=NbodySimuLabelBatch32,val_data=valDataBatch32,val_label=valLabelbatch32,test_data=testDataBatch32,test_label=testLabelbatch32,is_train=True, is_test=True)
+    trainCosmo = CosmoNet(train_data=NbodySimuDataBatch32,train_label=NbodySimuLabelBatch32,val_data=valDataBatch32,val_label=valLabelbatch32,test_data=testDataBatch32,test_label=testLabelbatch32,is_train=True, is_test=False)
     trainCosmo.train()
 
     #np.savetxt("losses4.txt",losses)
