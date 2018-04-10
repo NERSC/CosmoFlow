@@ -16,7 +16,7 @@ DATAPARAM={
 
 Input = {
         "BATCH_SIZE" : 1,              #mini-batch size for training and validation
-        "NUM_THREADS" : 2,              #number of threads to read data
+        "NUM_THREADS" : 6,              #number of threads to read data
         "CAPACITY" : 0,
         "MIN_AFTER_DEQUEUE" : 200       #the minimum number in the queue after dequeue (Min_after_dequeue and capacity together determines the shuffling of input data)
         }
@@ -40,9 +40,11 @@ Model = {
 }
 
 RUNPARAM={
+        "num_epochs_per_decay": 100, #learning rate decay
+        "LR_warmup_epoch_num": 2,  #learning rate warm up epoch for LARS
 
 	"num_epoch": 25,              #each epoch means a fully pass over the data. The program might stop before running num_epoch (see next line).        
-  "require_improvement": 50,      #if with require_improvement, there is no improvement in validation error, then stop running. 
+        "require_improvement": 50,      #if with require_improvement, there is no improvement in validation error, then stop running. 
 	"num_train":975,                #total number of simulations for training
 	"num_val":150,                   #total number of simulations for validation
         "num_test":50,                  #total number of simulations for testing
@@ -81,4 +83,4 @@ Path={
 	"test_data" : main_dir + target_dir + '/test/',              #path where the  test data is
 	"test_result" : './result/',           #path to store the test result
 
-}  
+} 
