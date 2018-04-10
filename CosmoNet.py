@@ -269,12 +269,12 @@ class CosmoNet:
                 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
                 with tf.control_dependencies(update_ops):
 
-                    num_batches_per_epoch = 4 #(float(hp.RUNPARAM['num_train']) *hp.magic_number/hp.Input['BATCH_SIZE']/num_nodes) 
+                    num_batches_per_epoch = (float(hp.RUNPARAM['num_train']) *hp.magic_number/hp.Input['BATCH_SIZE']/num_nodes) 
 
                     #use the CPE ML Plugin to average gradients across processes
                     lr = hp.Model['LEARNING_RATE']
                     if (lr_scaling_mode > 0 and adam_lr_decay == 1):
-                        boundaries = [np.int64(num_batches_per_epoch * x) for x in [6, 10]]
+                        boundaries = [np.int64(num_batches_per_epoch * x) for x in [60, 100]]
                         lr1 = lr
                         lr2 = lr
                         if (lr_scaling_mode == 1):
