@@ -35,17 +35,17 @@ Input_Test["CAPACITY"] = Input_Test["BATCH_SIZE"]*4 + Input_Test["MIN_AFTER_DEQU
 Model = {
         "REG_RATE": 0.,                 #regularization of weights: currently set to 0 since batch_normalization has the same effect of regularization
         "LEAK_PARAMETER": 0.01,         #leaky parameter for leaky relu
-        "LEARNING_RATE" : 0.0001,       #adam_optimizer to do the update. 
+        "LEARNING_RATE" : 0.001,       #adam_optimizer to do the update. 
         "DROP_OUT": 0.5                 #apply drop out in fully connected layer. this value gives the probabilty of keep the node. 
 }
 
 RUNPARAM={
         "num_epochs_per_decay": 100, #learning rate decay
-        "LR_warmup_epoch_num": 2,  #learning rate warm up epoch for LARS
+        "LR_warmup_epoch_num": 3,  #learning rate warm up epoch for LARS
 
-	"num_epoch": 25,              #each epoch means a fully pass over the data. The program might stop before running num_epoch (see next line).        
-        "require_improvement": 50,      #if with require_improvement, there is no improvement in validation error, then stop running. 
-	"num_train":975,                #total number of simulations for training
+	"num_epoch": 300,              #each epoch means a fully pass over the data. The program might stop before running num_epoch (see next line).        
+        "require_improvement": 500,      #if with require_improvement, there is no improvement in validation error, then stop running. 
+	"num_train":4150,                #total number of simulations for training
 	"num_val":150,                   #total number of simulations for validation
         "num_test":50,                  #total number of simulations for testing
 	"batch_per_epoch":0,             
@@ -62,15 +62,16 @@ RUNPARAM['iter_test'] = RUNPARAM['num_test']*magic_number/Input_Test['BATCH_SIZE
 
 #/global/cscratch1/sd/djbard/cosmoML/data-3param/500
 ## data on scratch
-#main_dir = "/global/cscratch1/sd/djbard/cosmoML/data-3param/"
+main_dir = "/global/cscratch1/sd/djbard/cosmoML/data-3param/"
+target_dir = "10000-4x-someunique"
 
 # path on Piz Daint
 #main_dir = "/scratch/snx3000/pjm/CosmoFlow_data/3param/"
 #target_dir = "8000-nodupes"
 
 # Cori BB path
-main_dir = someVariable = (os.environ['DW_PERSISTENT_STRIPED_CosmoFlow3param'])
-target_dir = "/8000-nodupes/"
+#main_dir = someVariable = (os.environ['DW_PERSISTENT_STRIPED_CosmoFlow3param'])
+#target_dir = "/10000-4x-someunique/"
 
 Path={
 

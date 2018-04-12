@@ -19,5 +19,5 @@ LOGName=LogCosmoFlow_N$(( ${i} ))BZ$(( ${BZsize} ))
 rm -rf result/*
 
 
-LD_PRELOAD=./syfix.so srun -u -n ${i} --ntasks-per-node=1 --nodes=${i} --cpu_bind=none   python CosmoNet.py > ${LOGName} 2>&1
+LD_PRELOAD=./syfix.so srun -n ${i} --ntasks-per-node=1 --nodes=${i} --cpu_bind=none   python CosmoNet.py > ${LOGName} 2>&1
 

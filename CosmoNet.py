@@ -33,8 +33,9 @@ loss_average_interval = 1  #every 5 epochs
 verbose               = 0  #print out model info
 extra_timers          = 1  #extra perf timers
 
-opt_type = 'ADAM' #  options are: 'ADAM', 'ADAM_LARC', 'ADAM_LARS'
+opt_type = 'ADAM_LARC' #  options are: 'ADAM', 'ADAM_LARC', 'ADAM_LARS', 'LARS'
 enable_weight_decay = 0 #set to 1 to enable weight decay
+poly_min_lr = 1e-4
 
 if (verbose == 1):
     print('opt_type is: ',opt_type)
@@ -46,10 +47,11 @@ if opt_type == 'ADAM':
     adam_beta_corrections       = 0
     lr_scaling_mode             = 1  # 0 = no scaling, 1 = sqrt() scaling, 2 = linear scaling
     adam_lr_decay               = 1
-elif (opt_type == 'ADAM_LARC') or (opt_type == 'ADAM_LARS'):
-    hp.Model['LEARNING_RATE'] = np.maximum(0.0005, hp.Model['LEARNING_RATE'])
+elif (opt_type == 'ADAM_LARC') or (opt_type == 'ADAM_LARS') or (opt_type == 'LARS') :
+#    hp.Model['LEARNING_RATE'] = np.maximum(0.0005, hp.Model['LEARNING_RATE'])
     adam_beta_corrections       = 0
-    lr_scaling_mode             = 0
+    lr_scaling_mode             = 3## 0 = no scaling,1 = sqrt()scaling step-wise decay,2 = linear scaling step-wise decay 3=poly(1) decay  4= ploy(2) decay
+    adam_lr_decay               = 1
     cpe_plugin_pipeline_enabled = 0 
 
 def weight_variable(shape,name):
@@ -291,32 +293,79 @@ class CosmoNet:
                     grads          = mc.gradients([gv[0] for gv in grads_and_vars], 0)
                     gs_and_vs      = [(g,v) for (_,v), g in zip(grads_and_vars, grads)]
                     train_step     = optimizer.apply_gradients(gs_and_vs, global_step=global_step)
-        elif opt_type == 'ADAM_LARC':
-            with tf.name_scope('ADAM_LARC_optimizer'):
-                update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-                with tf.control_dependencies(update_ops):
-                    self.learning_rate = hp.Model['LEARNING_RATE']
-                    train_step = self.get_lars_optimizer("Adam",loss,global_step, self.learning_rate,LARS_mode="clip")
+        elif opt_type in  ['ADAM_LARC', 'ADAM_LARS','LARS']:
+            num_batches_per_epoch = (float(hp.RUNPARAM['num_train']) *hp.magic_number/hp.Input['BATCH_SIZE']/num_nodes)
+            global_step_val = math_ops.cast(global_step, tf.float32)
+            num_steps_for_warmup = int(num_batches_per_epoch * hp.RUNPARAM['LR_warmup_epoch_num'])
 
-        elif opt_type =='ADAM_LARS':
-            with tf.name_scope('ADAM_LARS_optimizer'):
-                update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-                with tf.control_dependencies(update_ops):
-
-                    num_batches_per_epoch = (float(hp.RUNPARAM['num_train']) *hp.magic_number/hp.Input['BATCH_SIZE']/num_nodes)## avoid using the existing hyperparameter as it will be overwritten!!
+            def learning_rate_decay_schedule(global_step):
+                lr = hp.Model['LEARNING_RATE']
+                if (lr_scaling_mode in [1,2] and adam_lr_decay == 1):
+                    boundaries = [np.int64(num_batches_per_epoch * x) for x in [60, 100]]
+                    lr1 = lr
+                    lr2 = lr
+                    if (lr_scaling_mode == 1):
+                        lr1 = lr / (0.5*math.sqrt(num_nodes))
+                        lr2 = lr / math.sqrt(num_nodes)
+                    elif (lr_scaling_mode == 2):
+                        lr1 = lr / (0.5*num_nodes)
+                        lr2 = lr / num_nodes
+                    values = [lr, lr1, lr2]
+                    lr = tf.train.piecewise_constant(global_step, boundaries, values)
+                elif (lr_scaling_mode in [3,4]  and adam_lr_decay == 1):
+                    base_LR = lr
                     decay_steps = int(num_batches_per_epoch * hp.RUNPARAM['num_epochs_per_decay'])
-                    num_steps_for_warmup = int(num_batches_per_epoch * hp.RUNPARAM['LR_warmup_epoch_num'])
-                    base_LR=hp.Model['LEARNING_RATE']
-                    warmup_start_LR=0.0001 if (num_nodes*hp.Input['BATCH_SIZE'] <=8192) else 0.001
+                    if (lr_scaling_mode == 3):
+                        lr=tf.train.polynomial_decay(
+                                base_LR,
+                                global_step,
+                                decay_steps,
+                                end_learning_rate=poly_min_lr,
+                                power=1.0,#for LARS
+                                cycle=False,
+                                name="poly1_LR_decay")
+                    elif (lr_scaling_mode == 4):
+                            lr=tf.train.polynomial_decay(
+                                base_LR,
+                                global_step,
+                                decay_steps,
+                                end_learning_rate=poly_min_lr,
+                                power=2.0,#for LARS
+                                cycle=False,
+                                name="poly2_LR_decay")
+                return math_ops.cast(lr, tf.float32)
+            
+            def learning_rate_warmup_schedule(global_step):
+                #num_steps_for_warmup = int(num_batches_per_epoch * hp.RUNPARAM['LR_warmup_epoch_num'])
+                base_LR=hp.Model['LEARNING_RATE']
+                warmup_start_LR=0.0001 if (num_nodes*hp.Input['BATCH_SIZE'] <=8192) else 0.001
+                #global_step_val = math_ops.cast(global_step, tf.float32)
+                lr = (global_step_val * base_LR + (num_steps_for_warmup - global_step_val) * warmup_start_LR)/num_steps_for_warmup
+                return lr
 
-                    def learning_rate_fn(global_step):
-                        global_step_val = math_ops.cast(global_step, tf.float32)
-                        def b1(): return  (global_step_val * base_LR + (num_steps_for_warmup - global_step_val) * warmup_start_LR)/num_steps_for_warmup
-                        def b2(): return  math_ops.cast(base_LR, tf.float32)
-                        return tf.cond(tf.less(global_step_val, num_steps_for_warmup), lambda: b1(), lambda: b2())
-                    self.learning_rate = learning_rate_fn(global_step)
 
-                    train_step = self.get_lars_optimizer("Adam",loss,global_step, self.learning_rate,LARS_mode="scale")
+            if opt_type == 'ADAM_LARC':
+                with tf.name_scope('ADAM_LARC_optimizer'):
+                    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+                    with tf.control_dependencies(update_ops):
+                        lr = learning_rate_decay_schedule(global_step)    
+                        train_step = self.get_lars_optimizer("Adam",loss,global_step, lr,LARS_mode="clip")
+
+            elif opt_type =='ADAM_LARS':
+                with tf.name_scope('ADAM_LARS_optimizer'):
+                    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+                    with tf.control_dependencies(update_ops):
+                        self.learning_rate = tf.cond(tf.less(global_step_val, num_steps_for_warmup), lambda: learning_rate_warmup_schedule(global_step), lambda: learning_rate_decay_schedule(global_step))
+                        train_step = self.get_lars_optimizer("Adam",loss,global_step, self.learning_rate,LARS_mode="scale")
+
+            elif opt_type =='LARS':
+                with tf.name_scope('LARS_optimizer'):
+                    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+                    with tf.control_dependencies(update_ops):
+                        self.learning_rate = tf.cond(tf.less(global_step_val, num_steps_for_warmup), lambda: learning_rate_warmup_schedule(global_step), lambda: learning_rate_decay_schedule(global_step))
+                        train_step = self.get_lars_optimizer("SGD",loss,global_step, self.learning_rate, momentum=0.9,LARS_mode="scale")
+
+
 
         lossL1Train,train_true,train_predict = self.train_loss()    
         return train_step, loss,lossL1Train,train_true,train_predict
@@ -333,7 +382,7 @@ class CosmoNet:
         config.inter_op_parallelism_threads = 1 ## for March12 wheel
  
         #used to save the model
-        saver = tf.train.Saver()
+        saver = tf.train.Saver(max_to_keep=1000)
         global best_validation_accuracy
         global last_improvement
         global total_iterations
@@ -408,6 +457,16 @@ class CosmoNet:
                 sess.run(tf.global_variables_initializer())
                 sess.run(tf.local_variables_initializer())
                 sess.run(bcast)
+
+               #restore previous model###Lei
+                save_path = os.path.join(hp.Path['Model_path'])
+                if self.save_path != None:
+                    save_path = self.save_path
+                last_model=tf.train.latest_checkpoint(save_path)
+                if last_model is not None:
+                    print("Restoring model %s.", last_model)
+                    saver.restore(sess, last_model)
+
 
                 coord = tf.train.Coordinator()
                 threads = tf.train.start_queue_runners(coord=coord)
