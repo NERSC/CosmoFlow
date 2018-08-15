@@ -7,7 +7,7 @@
 #SBATCH -C knl,quad,cache
 #SBATCH --exclusive
 #SBATCH -A dasrepo
-#SBATCH --reservation=cosmoflow
+###SBATCH --reservation=cosmoflow
 #DW persistentdw name=CosmoFlow3param
 
 module load /global/cscratch1/sd/pjm/modulefiles/cosmoflow-gb-apr10

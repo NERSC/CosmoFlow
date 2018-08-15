@@ -1,0 +1,129 @@
+2018-08-14 14:15:46.899012: I tensorflow/core/platform/cpu_feature_guard.cc:137] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX512F
+2018-08-14 14:15:47.025823: I tensorflow/core/platform/cpu_feature_guard.cc:137] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX512F
+2018-08-14 14:15:47.029949: I tensorflow/core/platform/cpu_feature_guard.cc:137] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX512F
+2018-08-14 14:15:47.034900: I tensorflow/core/platform/cpu_feature_guard.cc:137] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX512F
++------------------------------+
+| CosmoFlow                    |
+| # Ranks =     4              |
+| Global Batch =      4        |
+| # Parameters =   7041443     |
+| Optimizer = ADAM_LARC |
+| Eff. Learning Rate = 1.000E-03  |
+| CPE Plugin Pipeline Disabled |
++------------------------------+
+Rank 0 has waited a total of 0.312861 seconds for communication to complete so far on team 0 (calls = 0)
+Train Step: 0, global step: 1, Samples/Sec = 0.151243852209, Samples/Sec(inst) = 0.151243852209, Loss = 0.90996546
+Train Step: 1, global step: 2, Samples/Sec = 0.299791353122, Samples/Sec(inst) = 16.8159094075, Loss = 11.572711
+Train Step: 2, global step: 3, Samples/Sec = 0.445834542073, Samples/Sec(inst) = 17.3468877952, Loss = 1.7966654
+Train Step: 3, global step: 4, Samples/Sec = 0.589566456184, Samples/Sec(inst) = 17.95564498, Loss = 1.2579207
+Train Step: 4, global step: 5, Samples/Sec = 0.7322637587, Samples/Sec(inst) = 22.9915583134, Loss = 1.0656296
+Train Step: 5, global step: 6, Samples/Sec = 0.873521643832, Samples/Sec(inst) = 24.626166194, Loss = 0.5897516
+Train Step: 6, global step: 7, Samples/Sec = 1.01331103875, Samples/Sec(inst) = 25.4460872045, Loss = 1.0561423
+Train Step: 7, global step: 8, Samples/Sec = 1.15157996022, Samples/Sec(inst) = 25.6866595524, Loss = 0.9394817
+Train Step: 8, global step: 9, Samples/Sec = 1.28822666778, Samples/Sec(inst) = 25.3995891185, Loss = 0.9013207
+Train Step: 9, global step: 10, Samples/Sec = 1.42340697087, Samples/Sec(inst) = 25.6085184586, Loss = 0.38536865
+Train Step: 10, global step: 11, Samples/Sec = 1.55705156192, Samples/Sec(inst) = 25.4863273091, Loss = 0.9427887
+Train Step: 11, global step: 12, Samples/Sec = 1.68922773247, Samples/Sec(inst) = 25.5079105889, Loss = 1.3058856
+Train Step: 12, global step: 13, Samples/Sec = 1.82006789177, Samples/Sec(inst) = 25.8045908417, Loss = 0.2994947
+Train Step: 13, global step: 14, Samples/Sec = 1.94931285818, Samples/Sec(inst) = 25.3631493016, Loss = 1.2642713
+Train Step: 14, global step: 15, Samples/Sec = 2.07723471193, Samples/Sec(inst) = 25.5618927472, Loss = 0.47224984
+Train Step: 15, global step: 16, Samples/Sec = 2.20370841213, Samples/Sec(inst) = 25.4129779167, Loss = 0.39203095
+Train Step: 16, global step: 17, Samples/Sec = 2.32894786567, Samples/Sec(inst) = 25.6773816356, Loss = 1.2857187
+Train Step: 17, global step: 18, Samples/Sec = 2.45280423676, Samples/Sec(inst) = 25.5717109826, Loss = 0.99123764
+Train Step: 18, global step: 19, Samples/Sec = 2.57532070778, Samples/Sec(inst) = 25.5214526824, Loss = 1.1060398
+Train Step: 19, global step: 20, Samples/Sec = 2.6966398471, Samples/Sec(inst) = 25.6966919592, Loss = 0.83602464
+Train Step: 20, global step: 21, Samples/Sec = 2.81676428587, Samples/Sec(inst) = 25.8227813811, Loss = 1.3130736
+Train Step: 21, global step: 22, Samples/Sec = 2.93555579067, Samples/Sec(inst) = 25.6680318777, Loss = 0.55445313
+Train Step: 22, global step: 23, Samples/Sec = 3.05303846566, Samples/Sec(inst) = 25.5383908144, Loss = 0.6329266
+Train Step: 23, global step: 24, Samples/Sec = 3.16938820098, Samples/Sec(inst) = 25.66685382, Loss = 0.72998613
+Train Step: 24, global step: 25, Samples/Sec = 3.28460571151, Samples/Sec(inst) = 25.7570909002, Loss = 0.7434542
+Train Step: 25, global step: 26, Samples/Sec = 3.3988282491, Samples/Sec(inst) = 26.020304789, Loss = 1.1779599
+Train Step: 26, global step: 27, Samples/Sec = 3.51177215678, Samples/Sec(inst) = 25.8192842655, Loss = 0.6321694
+Train Step: 27, global step: 28, Samples/Sec = 3.62335583888, Samples/Sec(inst) = 25.4991488741, Loss = 0.7084762
+Train Step: 28, global step: 29, Samples/Sec = 3.73387446737, Samples/Sec(inst) = 25.5829800731, Loss = 0.6951641
+Train Step: 29, global step: 30, Samples/Sec = 3.84335701425, Samples/Sec(inst) = 25.6774209347, Loss = 0.69911116
+Train Step: 30, global step: 31, Samples/Sec = 3.95172728439, Samples/Sec(inst) = 25.6444520531, Loss = 0.81975406
+Train Step: 31, global step: 32, Samples/Sec = 4.05802177447, Samples/Sec(inst) = 24.4231525652, Loss = 1.1175109
+Train Step: 32, global step: 33, Samples/Sec = 4.16427368733, Samples/Sec(inst) = 25.6834744271, Loss = 0.6489589
+Train Step: 33, global step: 34, Samples/Sec = 4.26980728478, Samples/Sec(inst) = 26.0841423143, Loss = 0.49107084
+Train Step: 34, global step: 35, Samples/Sec = 4.37388008265, Samples/Sec(inst) = 25.5364472268, Loss = 1.0935912
+Train Step: 35, global step: 36, Samples/Sec = 4.47696137094, Samples/Sec(inst) = 25.562399059, Loss = 1.3124313
+Train Step: 36, global step: 37, Samples/Sec = 4.57908078602, Samples/Sec(inst) = 25.6042585208, Loss = 0.90787214
+Train Step: 37, global step: 38, Samples/Sec = 4.68032498932, Samples/Sec(inst) = 25.7267968043, Loss = 0.99494255
+Train Step: 38, global step: 39, Samples/Sec = 4.78056437512, Samples/Sec(inst) = 25.6816659421, Loss = 0.7572264
+Train Step: 39, global step: 40, Samples/Sec = 4.88030019408, Samples/Sec(inst) = 26.1886205766, Loss = 0.7197954
+Train Step: 40, global step: 41, Samples/Sec = 4.97871971907, Samples/Sec(inst) = 25.7521489268, Loss = 0.655342
+Train Step: 41, global step: 42, Samples/Sec = 5.07614777015, Samples/Sec(inst) = 25.6792288218, Loss = 1.094425
+Train Step: 42, global step: 43, Samples/Sec = 5.17292728626, Samples/Sec(inst) = 25.9623622552, Loss = 0.7632057
+Train Step: 43, global step: 44, Samples/Sec = 5.26869529727, Samples/Sec(inst) = 25.8361029365, Loss = 1.1246622
+Train Step: 44, global step: 45, Samples/Sec = 5.36355522496, Samples/Sec(inst) = 25.8105853268, Loss = 0.77529085
+Train Step: 45, global step: 46, Samples/Sec = 5.4575888879, Samples/Sec(inst) = 25.8578047119, Loss = 0.93592024
+Train Step: 46, global step: 47, Samples/Sec = 5.55065019327, Samples/Sec(inst) = 25.7426656519, Loss = 0.94482535
+Train Step: 47, global step: 48, Samples/Sec = 5.64236822973, Samples/Sec(inst) = 25.2590932016, Loss = 0.8440594
+Train Step: 48, global step: 49, Samples/Sec = 5.73331116678, Samples/Sec(inst) = 25.3302553526, Loss = 0.4513099
+Train Step: 49, global step: 50, Samples/Sec = 5.82422348378, Samples/Sec(inst) = 26.1159754176, Loss = 0.9920083
+Train Step: 50, global step: 51, Samples/Sec = 5.9168515981, Samples/Sec(inst) = 28.8904700733, Loss = 0.78027403
+Train Step: 51, global step: 52, Samples/Sec = 6.00906959682, Samples/Sec(inst) = 29.2937191387, Loss = 0.85428
+Train Step: 52, global step: 53, Samples/Sec = 6.10060042781, Samples/Sec(inst) = 29.3396709145, Loss = 1.2947423
+Train Step: 53, global step: 54, Samples/Sec = 6.19152026232, Samples/Sec(inst) = 29.4667978081, Loss = 0.5862793
+Train Step: 54, global step: 55, Samples/Sec = 6.28175931927, Samples/Sec(inst) = 29.4959124329, Loss = 0.7317869
+Train Step: 55, global step: 56, Samples/Sec = 6.37121797468, Samples/Sec(inst) = 29.3951376089, Loss = 1.2628944
+Train Step: 56, global step: 57, Samples/Sec = 6.45946572612, Samples/Sec(inst) = 28.7926959447, Loss = 0.8477044
+Train Step: 57, global step: 58, Samples/Sec = 6.54758568448, Samples/Sec(inst) = 29.4397035186, Loss = 1.0830363
+Train Step: 58, global step: 59, Samples/Sec = 6.63502681146, Samples/Sec(inst) = 29.4331959088, Loss = 1.3899015
+Train Step: 59, global step: 60, Samples/Sec = 6.72155830775, Samples/Sec(inst) = 29.155152699, Loss = 0.88781637
+Train Step: 60, global step: 61, Samples/Sec = 6.80760759414, Samples/Sec(inst) = 29.3582050376, Loss = 1.0186763
+Train Step: 61, global step: 62, Samples/Sec = 6.89308870087, Samples/Sec(inst) = 29.452468853, Loss = 1.5102408
+Train Step: 62, global step: 63, Samples/Sec = 6.97801380671, Samples/Sec(inst) = 29.5503584324, Loss = 0.5137385
+Train Step: 63, global step: 64, Samples/Sec = 7.06185563776, Samples/Sec(inst) = 29.0556322381, Loss = 1.5864084
+Train Step: 64, global step: 65, Samples/Sec = 7.14544108244, Samples/Sec(inst) = 29.4676776565, Loss = 0.8003446
+Train Step: 65, global step: 66, Samples/Sec = 7.22830130604, Samples/Sec(inst) = 29.3541470925, Loss = 1.262955
+Train Step: 66, global step: 67, Samples/Sec = 7.31067713531, Samples/Sec(inst) = 29.497001461, Loss = 0.83505386
+Train Step: 67, global step: 68, Samples/Sec = 7.39245280691, Samples/Sec(inst) = 29.5046269103, Loss = 0.7715025
+Rank 1 has waited a total of 5.024851 seconds for communication to complete so far on team 0 (calls = 0)
+Traceback (most recent call last):
+  File "CosmoNet.py", line 601, in <module>
+    trainCosmo.train()
+  File "CosmoNet.py", line 483, in train
+    _,lossTrain,lossL1Train_,train_true_,train_predict_, gstep = sess.run([train_step,loss,lossL1Train,train_true,train_predict, global_step])
+  File "/global/common/software/dasrepo/CosmoFlow/April10/lib/python2.7/site-packages/tensorflow/python/client/session.py", line 895, in run
+    run_metadata_ptr)
+  File "/global/common/software/dasrepo/CosmoFlow/April10/lib/python2.7/site-packages/tensorflow/python/client/session.py", line 1128, in _run
+    feed_dict_tensor, options, run_metadata)
+  File "/global/common/software/dasrepo/CosmoFlow/April10/lib/python2.7/site-packages/tensorflow/python/client/session.py", line 1344, in _do_run
+    options, run_metadata)
+  File "/global/common/software/dasrepo/CosmoFlow/April10/lib/python2.7/site-packages/tensorflow/python/client/session.py", line 1363, in _do_call
+    raise type(e)(node_def, op, message)
+tensorflow.python.framework.errors_impl.OutOfRangeError: RandomShuffleQueue '_2_shuffle_batch/random_shuffle_queue' is closed and has insufficient elements (requested 1, current size 0)
+	 [[Node: shuffle_batch = QueueDequeueUpToV2[component_types=[DT_FLOAT, DT_FLOAT], timeout_ms=-1, _device="/job:localhost/replica:0/task:0/device:CPU:0"](shuffle_batch/random_shuffle_queue, shuffle_batch/n)]]
+
+Caused by op u'shuffle_batch', defined at:
+  File "CosmoNet.py", line 593, in <module>
+    NbodySimuDataBatch32, NbodySimuLabelBatch32 = readDataSet(filenames = [hp.Path['train_data']+str(i)+'.tfrecord' for i in range(0,(hyper_parameters_Cosmo.RUNPARAM["num_train"]))])
+  File "/global/cscratch1/sd/djbard/cosmoML/github/April10runs/CosmoFlow/io_Cosmo.py", line 88, in readDataSet
+    allow_smaller_final_batch=True)
+  File "/global/common/software/dasrepo/CosmoFlow/April10/lib/python2.7/site-packages/tensorflow/python/training/input.py", line 1287, in shuffle_batch
+    name=name)
+  File "/global/common/software/dasrepo/CosmoFlow/April10/lib/python2.7/site-packages/tensorflow/python/training/input.py", line 836, in _shuffle_batch
+    dequeued = queue.dequeue_up_to(batch_size, name=name)
+  File "/global/common/software/dasrepo/CosmoFlow/April10/lib/python2.7/site-packages/tensorflow/python/ops/data_flow_ops.py", line 519, in dequeue_up_to
+    self._queue_ref, n=n, component_types=self._dtypes, name=name)
+  File "/global/common/software/dasrepo/CosmoFlow/April10/lib/python2.7/site-packages/tensorflow/python/ops/gen_data_flow_ops.py", line 2574, in _queue_dequeue_up_to_v2
+    component_types=component_types, timeout_ms=timeout_ms, name=name)
+  File "/global/common/software/dasrepo/CosmoFlow/April10/lib/python2.7/site-packages/tensorflow/python/framework/op_def_library.py", line 787, in _apply_op_helper
+    op_def=op_def)
+  File "/global/common/software/dasrepo/CosmoFlow/April10/lib/python2.7/site-packages/tensorflow/python/framework/ops.py", line 3160, in create_op
+    op_def=op_def)
+  File "/global/common/software/dasrepo/CosmoFlow/April10/lib/python2.7/site-packages/tensorflow/python/framework/ops.py", line 1625, in __init__
+    self._traceback = self._graph._extract_stack()  # pylint: disable=protected-access
+
+OutOfRangeError (see above for traceback): RandomShuffleQueue '_2_shuffle_batch/random_shuffle_queue' is closed and has insufficient elements (requested 1, current size 0)
+	 [[Node: shuffle_batch = QueueDequeueUpToV2[component_types=[DT_FLOAT, DT_FLOAT], timeout_ms=-1, _device="/job:localhost/replica:0/task:0/device:CPU:0"](shuffle_batch/random_shuffle_queue, shuffle_batch/n)]]
+
+srun: error: nid11436: task 1: Exited with exit code 1
+srun: Terminating job step 14149155.0
+slurmstepd: error: *** STEP 14149155.0 ON nid11435 CANCELLED AT 2018-08-14T14:16:46 ***
+Train Step: 68, global step: 69, Samples/Sec = 7.4734074srun: error: nid11435: task 0: Terminated
+srun: error: nid11447: task 2: Terminated
+srun: error: nid11454: task 3: Terminated
+srun: Force Terminated job step 14149155.0
